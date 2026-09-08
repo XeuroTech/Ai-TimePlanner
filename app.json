@@ -1,0 +1,96 @@
+{
+  "expo": {
+    "name": "Ai-TimeTable-Planner",
+    "slug": "claudeexpoapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": [
+      "aitimetableplanner",
+      "com.googleusercontent.apps.787221695113-tl25n8uj31abjg1me5oi2m5bintqgavi"
+    ],
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "package": "com.TimePlanner.company",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-apple-authentication",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#6C4DFF",
+          "defaultChannel": "reminders"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "@react-native-firebase/analytics"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "firebase": {
+        "apiKey": "AIzaSyDQeGpV7Hloml0Ee6r9BhYfNlDMia27IuA",
+        "authDomain": "time-planner-e1e56.firebaseapp.com",
+        "projectId": "time-planner-e1e56",
+        "storageBucket": "time-planner-e1e56.firebasestorage.app",
+        "messagingSenderId": "787221695113",
+        "appId": "1:787221695113:web:89ac7e610a01c9ebdf1458",
+        "measurementId": "G-63CDH7M6DK"
+      },
+      "google": {
+        "androidClientId": "787221695113-tl25n8uj31abjg1me5oi2m5bintqgavi.apps.googleusercontent.com",
+        "iosClientId": "787221695113-tl25n8uj31abjg1me5oi2m5bintqgavi.apps.googleusercontent.com",
+        "webClientId": ""
+      },
+      "eas": {
+        "projectId": "99c1c45a-03a7-4ab5-9bb0-d39020de35ed"
+      }
+    },
+    "owner": "claudeexpoapps-team"
+  }
+}

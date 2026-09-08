@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "787221695113",
+    "project_id": "time-planner-e1e56",
+    "storage_bucket": "time-planner-e1e56.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787221695113:android:82c6ef10f8faa50ddf1458",
+        "android_client_info": {
+          "package_name": "com.TimePlanner.company"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA82ETiA4MltuEvkyD7XQR-lSakj7dUeWM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
