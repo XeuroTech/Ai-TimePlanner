@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   LayoutAnimation,
   Modal,
@@ -18,7 +19,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressRing } from '@/components/progress-ring';
+import { ColorPickerField } from '@/components/ui/color-picker-field';
 import { EmptyState } from '@/components/ui/empty-state';
+import { NumberStepperField } from '@/components/ui/number-stepper-field';
 import { useToast } from '@/components/ui/toast';
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
@@ -26,6 +29,7 @@ import { usePremium } from '@/hooks/use-premium';
 import {
   type Habit,
   type HabitColorKey,
+  type HabitKind,
   useHabitProgress,
   useHabitsStore,
 } from '@/store/habits-store';
@@ -46,7 +50,13 @@ const FREE_HABIT_LIMIT = 3;
 /* Editor presets                                                             */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * `flag-outline` sits first as the generic "any habit" icon, pre-selected in
+ * `BLANK_DRAFT` — a user whose habit doesn't match one of the specific icons
+ * below always has a sensible one already chosen instead of none.
+ */
 const ICON_CHOICES: IoniconName[] = [
+  'flag-outline',
   'water-outline',
   'barbell-outline',
   'book-outline',
@@ -55,22 +65,59 @@ const ICON_CHOICES: IoniconName[] = [
   'leaf-outline',
   'musical-notes-outline',
   'heart-outline',
+  'flower-outline',
+  'bed-outline',
+  'nutrition-outline',
+  'medkit-outline',
+  'create-outline',
+  'sunny-outline',
+  'body-outline',
+  'cash-outline',
+  'school-outline',
+  'phone-portrait-outline',
+  'happy-outline',
+  'fitness-outline',
+  'bicycle-outline',
+  'football-outline',
+  'basketball-outline',
+  'trophy-outline',
+  'game-controller-outline',
+  'tv-outline',
+  'headset-outline',
+  'camera-outline',
+  'brush-outline',
+  'color-palette-outline',
+  'code-slash-outline',
+  'laptop-outline',
+  'people-outline',
+  'call-outline',
+  'chatbubble-outline',
+  'mail-outline',
+  'gift-outline',
+  'paw-outline',
+  'airplane-outline',
 ];
 
 const COLOR_CHOICES: HabitColorKey[] = ['primary', 'blue', 'green', 'orange', 'pink'];
 
 /** Starting points so a new habit is one tap away from being useful. */
-const TEMPLATES: { name: string; icon: IoniconName; colorKey: HabitColorKey; unit: string; step: number; target: number }[] = [
-  { name: 'Drink water', icon: 'water-outline', colorKey: 'blue', unit: 'glasses', step: 1, target: 8 },
-  { name: 'Exercise', icon: 'barbell-outline', colorKey: 'pink', unit: 'min', step: 15, target: 30 },
-  { name: 'Read', icon: 'book-outline', colorKey: 'primary', unit: 'pages', step: 5, target: 20 },
-  { name: 'Sleep early', icon: 'moon-outline', colorKey: 'orange', unit: '', step: 1, target: 1 },
+const TEMPLATES: { name: string; icon: IoniconName; colorKey: HabitColorKey; kind: HabitKind; unit: string; step: number; target: number }[] = [
+  { name: 'Drink water', icon: 'water-outline', colorKey: 'blue', kind: 'counter', unit: 'glasses', step: 1, target: 8 },
+  { name: 'Exercise', icon: 'barbell-outline', colorKey: 'pink', kind: 'counter', unit: 'min', step: 15, target: 30 },
+  { name: 'Read', icon: 'book-outline', colorKey: 'primary', kind: 'counter', unit: 'pages', step: 5, target: 20 },
+  { name: 'Sleep early', icon: 'moon-outline', colorKey: 'orange', kind: 'checkbox', unit: '', step: 1, target: 1 },
+  { name: 'Meditate', icon: 'flower-outline', colorKey: 'green', kind: 'counter', unit: 'min', step: 5, target: 10 },
+  { name: 'Walk', icon: 'walk-outline', colorKey: 'blue', kind: 'counter', unit: 'steps', step: 500, target: 5000 },
+  { name: 'Journal', icon: 'create-outline', colorKey: 'primary', kind: 'checkbox', unit: '', step: 1, target: 1 },
+  { name: 'Take vitamins', icon: 'medkit-outline', colorKey: 'pink', kind: 'checkbox', unit: '', step: 1, target: 1 },
 ];
 
 type Draft = {
   name: string;
   icon: IoniconName;
   colorKey: HabitColorKey;
+  customColor?: string;
+  kind: HabitKind;
   unit: string;
   step: number;
   target: number;
@@ -78,8 +125,9 @@ type Draft = {
 
 const BLANK_DRAFT: Draft = {
   name: '',
-  icon: 'leaf-outline',
+  icon: 'flag-outline',
   colorKey: 'primary',
+  kind: 'checkbox',
   unit: '',
   step: 1,
   target: 1,
@@ -106,6 +154,7 @@ export default function HabitsScreen() {
   const updateHabit = useHabitsStore((s) => s.updateHabit);
   const removeHabit = useHabitsStore((s) => s.removeHabit);
   const bumpHabit = useHabitsStore((s) => s.bumpHabit);
+  const decrementHabit = useHabitsStore((s) => s.decrementHabit);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Habit | null>(null);
@@ -117,11 +166,14 @@ export default function HabitsScreen() {
 
   const atLimit = !isPremium && rows.length >= FREE_HABIT_LIMIT;
 
-  /** Resolves a stored palette key into the real colors for the active theme. */
-  const look = (key: HabitColorKey) => ({
-    color: (Palette as unknown as Record<string, string>)[key] ?? Palette.primary,
-    tint: (Tint as unknown as Record<string, string>)[key] ?? Tint.primary,
-  });
+  /** Resolves a stored palette key (or a custom hex) into render-ready colors. */
+  const look = (key: HabitColorKey, customColor?: string) => {
+    if (key === 'custom' && customColor) return { color: customColor, tint: `${customColor}22` };
+    return {
+      color: (Palette as unknown as Record<string, string>)[key] ?? Palette.primary,
+      tint: (Tint as unknown as Record<string, string>)[key] ?? Tint.primary,
+    };
+  };
 
   const openCreate = () => {
     if (atLimit) {
@@ -140,6 +192,8 @@ export default function HabitsScreen() {
       name: habit.name,
       icon: habit.icon as IoniconName,
       colorKey: habit.colorKey,
+      customColor: habit.customColor,
+      kind: habit.kind,
       unit: habit.unit,
       step: habit.step,
       target: habit.target,
@@ -153,10 +207,20 @@ export default function HabitsScreen() {
       toast.show('Give the habit a name.', 'error');
       return;
     }
-    // A unit-less habit is a simple done/not-done tick.
-    const target = draft.unit ? Math.max(1, draft.target) : 1;
-    const step = draft.unit ? Math.max(1, draft.step) : 1;
-    const payload = { name, icon: draft.icon, colorKey: draft.colorKey, unit: draft.unit.trim(), step, target };
+    // A checkbox habit is always a simple done/not-done tick.
+    const isCounter = draft.kind === 'counter';
+    const target = isCounter ? Math.max(1, draft.target) : 1;
+    const step = isCounter ? Math.max(1, draft.step) : 1;
+    const payload = {
+      name,
+      icon: draft.icon,
+      colorKey: draft.colorKey,
+      customColor: draft.colorKey === 'custom' ? draft.customColor : undefined,
+      kind: draft.kind,
+      unit: isCounter ? draft.unit.trim() : '',
+      step,
+      target,
+    };
 
     animateNext();
     if (editing) {
@@ -170,15 +234,25 @@ export default function HabitsScreen() {
   };
 
   const onDelete = () => {
-    // The only Pressable that calls onDelete is itself rendered exclusively
-    // when `editing` is truthy, so this guard's true branch is unreachable.
-    /* v8 ignore start */
     if (!editing) return;
-    /* v8 ignore stop */
     animateNext();
     removeHabit(editing.id);
     setEditorOpen(false);
     toast.success('Habit removed.');
+  };
+
+  const confirmDelete = (habit: Habit) => {
+    Alert.alert('Delete habit', `Remove "${habit.name}" and its history? This can't be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          animateNext();
+          removeHabit(habit.id);
+        },
+      },
+    ]);
   };
 
   const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
@@ -245,7 +319,7 @@ export default function HabitsScreen() {
 
               <Text style={styles.sectionLabel}>Your Habits</Text>
               {rows.map(({ habit, current, target, done, pct, streak }) => {
-                const l = look(habit.colorKey);
+                const l = look(habit.colorKey, habit.customColor);
                 return (
                   <Pressable
                     key={habit.id}
@@ -280,8 +354,30 @@ export default function HabitsScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.habitAction, done && { backgroundColor: l.color, borderColor: l.color }]}>
-                      <Ionicons name={done ? 'checkmark' : 'add'} size={20} color={done ? '#FFFFFF' : l.color} />
+                    <View style={styles.habitActions}>
+                      {/* Checkbox habits toggle on the main tap; the minus is only
+                         useful mid-way through a counter, not once it's done —
+                         at that point the main circle itself resets it. */}
+                      {habit.kind === 'counter' && current > 0 && !done ? (
+                        <Pressable
+                          onPress={() => {
+                            animateNext();
+                            decrementHabit(habit.id);
+                          }}
+                          hitSlop={8}
+                          style={({ pressed }) => [styles.minusBtn, pressed && styles.pressed]}>
+                          <Ionicons name="remove" size={16} color={Palette.subtle} />
+                        </Pressable>
+                      ) : null}
+                      <View style={[styles.habitAction, done && { backgroundColor: l.color, borderColor: l.color }]}>
+                        <Ionicons name={done ? 'checkmark' : 'add'} size={20} color={done ? '#FFFFFF' : l.color} />
+                      </View>
+                      <Pressable
+                        onPress={() => confirmDelete(habit)}
+                        hitSlop={8}
+                        style={({ pressed }) => [styles.deleteRowBtn, pressed && styles.pressed]}>
+                        <Ionicons name="trash-outline" size={15} color={Palette.subtle} />
+                      </Pressable>
                     </View>
                   </Pressable>
                 );
@@ -396,6 +492,40 @@ function HabitEditor({
                 />
               </View>
 
+              <Text style={styles.fieldLabel}>Type</Text>
+              <View style={styles.kindRow}>
+                <Pressable
+                  onPress={() => patch({ kind: 'counter' })}
+                  style={[styles.kindOption, draft.kind === 'counter' && styles.kindOptionActive]}>
+                  <Ionicons
+                    name="repeat-outline"
+                    size={18}
+                    color={draft.kind === 'counter' ? '#FFFFFF' : Palette.muted}
+                  />
+                  <Text style={[styles.kindOptionText, draft.kind === 'counter' && styles.kindOptionTextActive]}>
+                    Counter
+                  </Text>
+                  <Text style={[styles.kindOptionSub, draft.kind === 'counter' && styles.kindOptionSubActive]}>
+                    Tap adds progress
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => patch({ kind: 'checkbox' })}
+                  style={[styles.kindOption, draft.kind === 'checkbox' && styles.kindOptionActive]}>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color={draft.kind === 'checkbox' ? '#FFFFFF' : Palette.muted}
+                  />
+                  <Text style={[styles.kindOptionText, draft.kind === 'checkbox' && styles.kindOptionTextActive]}>
+                    Checkbox
+                  </Text>
+                  <Text style={[styles.kindOptionSub, draft.kind === 'checkbox' && styles.kindOptionSubActive]}>
+                    Done or not done
+                  </Text>
+                </Pressable>
+              </View>
+
               <Text style={styles.fieldLabel}>Icon</Text>
               <View style={styles.chipGrid}>
                 {ICON_CHOICES.map((ic) => {
@@ -412,52 +542,50 @@ function HabitEditor({
               </View>
 
               <Text style={styles.fieldLabel}>Color</Text>
-              <View style={styles.chipGrid}>
-                {COLOR_CHOICES.map((key) => {
-                  // Every key in the hardcoded COLOR_CHOICES array is guaranteed
-                  // to exist on Palette, so this fallback can never trigger.
-                  /* v8 ignore start */
-                  const color = (Palette as unknown as Record<string, string>)[key] ?? Palette.primary;
-                  /* v8 ignore stop */
-                  const active = key === draft.colorKey;
-                  return (
-                    <Pressable
-                      key={key}
-                      onPress={() => patch({ colorKey: key })}
-                      style={[styles.colorChip, { backgroundColor: color }, active && styles.colorChipActive]}>
-                      {active ? <Ionicons name="checkmark" size={16} color="#FFFFFF" /> : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <ColorPickerField
+                presets={COLOR_CHOICES.map((key) => ({
+                  key,
+                  color: (Palette as unknown as Record<string, string>)[key] ?? Palette.primary,
+                }))}
+                selectedKey={draft.colorKey}
+                customColor={draft.customColor}
+                onSelectPreset={(key) => patch({ colorKey: key as HabitColorKey, customColor: undefined })}
+                onSelectCustom={(hex) => patch({ colorKey: 'custom', customColor: hex })}
+              />
 
-              <Text style={styles.fieldLabel}>Unit (leave empty for a simple daily tick)</Text>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={draft.unit}
-                  onChangeText={(v) => patch({ unit: v })}
-                  placeholder="glasses, min, pages…"
-                  placeholderTextColor={Palette.subtle}
-                  style={styles.input}
-                />
-              </View>
-
-              {draft.unit.trim() ? (
+              {draft.kind === 'counter' ? (
                 <>
+                  <Text style={styles.fieldLabel}>Unit</Text>
+                  <View style={styles.inputWrap}>
+                    <TextInput
+                      value={draft.unit}
+                      onChangeText={(v) => patch({ unit: v })}
+                      placeholder="glasses, min, pages…"
+                      placeholderTextColor={Palette.subtle}
+                      style={styles.input}
+                    />
+                  </View>
+
                   <View style={styles.stepperRow}>
                     <Text style={styles.stepperLabel}>Daily target</Text>
-                    <Stepper
-                      value={`${draft.target}`}
-                      onDec={() => patch({ target: Math.max(1, draft.target - 1) })}
-                      onInc={() => patch({ target: Math.min(999, draft.target + 1) })}
+                    <NumberStepperField
+                      value={draft.target}
+                      onChange={(v) => patch({ target: v })}
+                      min={1}
+                      max={999}
+                      unit={draft.unit.trim()}
+                      title="Daily target"
                     />
                   </View>
                   <View style={styles.stepperRow}>
                     <Text style={styles.stepperLabel}>Per tap</Text>
-                    <Stepper
-                      value={`${draft.step}`}
-                      onDec={() => patch({ step: Math.max(1, draft.step - 1) })}
-                      onInc={() => patch({ step: Math.min(100, draft.step + 1) })}
+                    <NumberStepperField
+                      value={draft.step}
+                      onChange={(v) => patch({ step: v })}
+                      min={1}
+                      max={100}
+                      unit={draft.unit.trim()}
+                      title="Amount added per tap"
                     />
                   </View>
                 </>
@@ -483,22 +611,6 @@ function HabitEditor({
         </KeyboardAvoidingView>
       </View>
     </Modal>
-  );
-}
-
-function Stepper({ value, onDec, onInc }: { value: string; onDec: () => void; onInc: () => void }) {
-  const { Palette, Tint } = useAppTheme();
-  const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
-  return (
-    <View style={styles.stepper}>
-      <Pressable onPress={onDec} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-        <Ionicons name="remove" size={18} color={Palette.primary} />
-      </Pressable>
-      <Text style={styles.stepValue}>{value}</Text>
-      <Pressable onPress={onInc} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-        <Ionicons name="add" size={18} color={Palette.primary} />
-      </Pressable>
-    </View>
   );
 }
 
@@ -632,6 +744,17 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     metaDot: { color: Palette.subtle, fontSize: 13 },
     habitStreak: { fontFamily: FontFamily, fontSize: 13, fontWeight: '700', color: Palette.orange },
 
+    habitActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    minusBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 10,
+      backgroundColor: Palette.bg,
+      borderWidth: 1.5,
+      borderColor: Palette.hairline,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     habitAction: {
       width: 40,
       height: 40,
@@ -642,6 +765,7 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    deleteRowBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
 
     hint: {
       fontFamily: FontFamily,
@@ -723,6 +847,23 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     },
     templateText: { fontFamily: FontFamily, fontSize: 13, fontWeight: '700', color: Palette.primary },
 
+    kindRow: { flexDirection: 'row', gap: 10 },
+    kindOption: {
+      flex: 1,
+      backgroundColor: Palette.card,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: Palette.hairline,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 4,
+    },
+    kindOptionActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
+    kindOptionText: { fontFamily: FontFamily, fontSize: 14, fontWeight: '700', color: Palette.ink, marginTop: 2 },
+    kindOptionTextActive: { color: '#FFFFFF' },
+    kindOptionSub: { fontFamily: FontFamily, fontSize: 11, fontWeight: '600', color: Palette.muted },
+    kindOptionSubActive: { color: 'rgba(255,255,255,0.85)' },
+
     chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     iconChip: {
       width: 46,
@@ -735,14 +876,6 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       justifyContent: 'center',
     },
     iconChipActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
-    colorChip: {
-      width: 46,
-      height: 46,
-      borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    colorChipActive: { borderWidth: 3, borderColor: Palette.ink },
 
     stepperRow: {
       flexDirection: 'row',
@@ -755,23 +888,6 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       marginTop: 12,
     },
     stepperLabel: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: Palette.ink },
-    stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    stepBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 11,
-      backgroundColor: Tint.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepValue: {
-      fontFamily: FontFamily,
-      fontSize: 16,
-      fontWeight: '800',
-      color: Palette.ink,
-      minWidth: 44,
-      textAlign: 'center',
-    },
 
     sheetFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 },
     deleteBtn: {

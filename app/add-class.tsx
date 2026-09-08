@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
 import {
@@ -15,12 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ClockTimeField } from '@/components/ui/clock-time-picker';
+import { ColorPickerField } from '@/components/ui/color-picker-field';
 import { getAddEntryConfig } from '@/constants/categories';
 import { AppPalette, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { REMINDER_OPTIONS } from '@/lib/services/reminders';
 import { useProfile } from '@/store/auth-store';
-import { usePlannerStore } from '@/store/planner-store';
+import { useMyClasses, usePlannerStore } from '@/store/planner-store';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -40,7 +41,11 @@ const todayIndex = (new Date().getDay() + 6) % 7;
 
 export default function AddClassScreen() {
   const router = useRouter();
+  const { classId } = useLocalSearchParams<{ classId?: string }>();
   const addClass = usePlannerStore((s) => s.addClass);
+  const updateClass = usePlannerStore((s) => s.updateClass);
+  const classes = useMyClasses();
+  const editing = classId ? classes.find((c) => c.id === classId) ?? null : null;
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const COLOR_OPTIONS = [
@@ -57,15 +62,15 @@ export default function AddClassScreen() {
   const profile = useProfile();
   const cfg = getAddEntryConfig(profile?.category);
 
-  const [subject, setSubject] = useState('');
-  const [dayIndex, setDayIndex] = useState(todayIndex);
-  const [start, setStart] = useState<number>(540); // 9:00 AM
-  const [end, setEnd] = useState<number>(600); // 10:00 AM
-  const [teacher, setTeacher] = useState('');
-  const [room, setRoom] = useState('');
-  const [reminder, setReminder] = useState('At start');
-  const [repeat, setRepeat] = useState('Weekly');
-  const [color, setColor] = useState<string>(Palette.primary);
+  const [subject, setSubject] = useState(editing?.subject ?? '');
+  const [dayIndex, setDayIndex] = useState(editing?.day ?? todayIndex);
+  const [start, setStart] = useState<number>(editing?.start ?? 540); // 9:00 AM
+  const [end, setEnd] = useState<number>(editing?.end ?? 600); // 10:00 AM
+  const [teacher, setTeacher] = useState(editing?.teacher ?? '');
+  const [room, setRoom] = useState(editing?.room ?? '');
+  const [reminder, setReminder] = useState(editing?.reminder ?? 'At start');
+  const [repeat, setRepeat] = useState(editing?.repeat ?? 'Weekly');
+  const [color, setColor] = useState<string>(editing?.color ?? Palette.primary);
   const [error, setError] = useState<string | null>(null);
 
   const onSave = () => {
@@ -78,7 +83,7 @@ export default function AddClassScreen() {
       return;
     }
     setError(null);
-    addClass({
+    const payload = {
       subject: subject.trim(),
       day: dayIndex,
       start,
@@ -88,7 +93,9 @@ export default function AddClassScreen() {
       reminder,
       repeat,
       color,
-    });
+    };
+    if (editing) updateClass(editing.id, payload);
+    else addClass(payload);
     router.back();
   };
 
@@ -104,7 +111,7 @@ export default function AddClassScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>{cfg.title}</Text>
+          <Text style={styles.headerTitle}>{editing ? `Edit ${cfg.title}` : cfg.title}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -219,20 +226,13 @@ export default function AddClassScreen() {
 
             {/* Color */}
             <Field label="Color">
-              <View style={styles.colorRow}>
-                {COLOR_OPTIONS.map((c) => {
-                  const active = c === color;
-                  return (
-                    <Pressable key={c} onPress={() => setColor(c)} style={styles.colorHit}>
-                      <View style={[styles.colorRing, active && { borderColor: c }]}>
-                        <View style={[styles.colorDot, { backgroundColor: c }]}>
-                          {active ? <Ionicons name="checkmark" size={16} color="#FFFFFF" /> : null}
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <ColorPickerField
+                presets={COLOR_OPTIONS.map((c) => ({ key: c, color: c }))}
+                selectedKey={COLOR_OPTIONS.includes(color) ? color : 'custom'}
+                customColor={COLOR_OPTIONS.includes(color) ? undefined : color}
+                onSelectPreset={(key) => setColor(key)}
+                onSelectCustom={(hex) => setColor(hex)}
+              />
             </Field>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -245,7 +245,7 @@ export default function AddClassScreen() {
             onPress={onSave}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.saveBtn, pressed && styles.savePressed]}>
-            <Text style={styles.saveText}>{cfg.saveLabel}</Text>
+            <Text style={styles.saveText}>{editing ? 'Save Changes' : cfg.saveLabel}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -386,19 +386,6 @@ function createStyles(Palette: AppPalette) {
   chipActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
   chipText: { fontFamily: FontFamily, fontSize: 13, fontWeight: '700', color: Palette.muted },
   chipTextActive: { color: '#FFFFFF' },
-
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  colorHit: { padding: 2 },
-  colorRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2.5,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 
   error: { fontFamily: FontFamily, fontSize: 14, fontWeight: '600', color: '#E5484D', marginTop: 4 },
 

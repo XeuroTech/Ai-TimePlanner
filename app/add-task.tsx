@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
 import {
@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppPalette, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { Priority, usePlannerStore } from '@/store/planner-store';
+import { Priority, useMyTasks, usePlannerStore } from '@/store/planner-store';
 
 const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
 
@@ -24,7 +24,11 @@ const DUE_OPTIONS = ['Today', 'Tomorrow', 'This week', 'Next week', 'No date'];
 
 export default function AddTaskScreen() {
   const router = useRouter();
+  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const addTask = usePlannerStore((s) => s.addTask);
+  const updateTask = usePlannerStore((s) => s.updateTask);
+  const tasks = useMyTasks();
+  const editing = taskId ? tasks.find((t) => t.id === taskId) ?? null : null;
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const PRIORITY_STYLE: Record<Priority, { color: string; tint: string }> = {
@@ -33,10 +37,10 @@ export default function AddTaskScreen() {
     Low: { color: Palette.green, tint: Tint.green },
   };
 
-  const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('');
-  const [due, setDue] = useState('Today');
-  const [priority, setPriority] = useState<Priority>('Medium');
+  const [title, setTitle] = useState(editing?.title ?? '');
+  const [subject, setSubject] = useState(editing?.subject ?? '');
+  const [due, setDue] = useState(editing?.due ?? 'Today');
+  const [priority, setPriority] = useState<Priority>(editing?.priority ?? 'Medium');
   const [error, setError] = useState<string | null>(null);
 
   const onSave = () => {
@@ -45,12 +49,9 @@ export default function AddTaskScreen() {
       return;
     }
     setError(null);
-    addTask({
-      title: title.trim(),
-      subject: subject.trim() || 'General',
-      due,
-      priority,
-    });
+    const payload = { title: title.trim(), subject: subject.trim() || 'General', due, priority };
+    if (editing) updateTask(editing.id, payload);
+    else addTask(payload);
     router.back();
   };
 
@@ -65,7 +66,7 @@ export default function AddTaskScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Add Task</Text>
+          <Text style={styles.headerTitle}>{editing ? 'Edit Task' : 'Add Task'}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -155,7 +156,7 @@ export default function AddTaskScreen() {
             onPress={onSave}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.saveBtn, pressed && styles.savePressed]}>
-            <Text style={styles.saveText}>Save Task</Text>
+            <Text style={styles.saveText}>{editing ? 'Save Changes' : 'Save Task'}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

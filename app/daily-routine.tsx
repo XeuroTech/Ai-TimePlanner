@@ -2,18 +2,53 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ClockTimeField } from '@/components/ui/clock-time-picker';
+import { NumberStepperField } from '@/components/ui/number-stepper-field';
 import { useToast } from '@/components/ui/toast';
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { formatMinutesTotal } from '@/lib/analytics';
 import { MINUTES_PER_DAY } from '@/lib/time';
+import { DefaultRoutineKey, RoutineItem } from '@/lib/db/profile-repository';
 import { useAuthStore } from '@/store/auth-store';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
+type RoutineColorKey = RoutineItem['colorKey'];
+
+/** New custom items rotate through these so they're visually distinct without asking for a color. */
+const ROTATE_COLORS: RoutineColorKey[] = ['primary', 'blue', 'green', 'orange', 'pink'];
+
+const ADD_ICON_CHOICES: IoniconName[] = [
+  'flag-outline',
+  'walk-outline',
+  'laptop-outline',
+  'cafe-outline',
+  'game-controller-outline',
+  'musical-notes-outline',
+  'people-outline',
+  'call-outline',
+  'tv-outline',
+  'book-outline',
+  'briefcase-outline',
+  'restaurant-outline',
+];
+
+function makeRoutineId(): string {
+  return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
@@ -37,12 +72,44 @@ export default function DailyRoutineScreen() {
   const [workHours, setWorkHours] = useState(prefs?.workHours ?? 2);
   const [exercise, setExercise] = useState(prefs?.exerciseMinutes ?? 30); // minutes
   const [meals, setMeals] = useState(prefs?.mealsPerDay ?? 3);
+  // Only wake/sleep are fixed — everything else (defaults included) can be
+  // removed, because no two people's routine looks the same.
+  const [hiddenDefaults, setHiddenDefaults] = useState<DefaultRoutineKey[]>(
+    prefs?.hiddenRoutineDefaults ?? [],
+  );
+  const [customItems, setCustomItems] = useState<RoutineItem[]>(prefs?.customRoutine ?? []);
+  const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const isHidden = (key: DefaultRoutineKey) => hiddenDefaults.includes(key);
+  const hideDefault = (key: DefaultRoutineKey) =>
+    setHiddenDefaults((list) => (list.includes(key) ? list : [...list, key]));
+
+  const addCustomItem = (item: Omit<RoutineItem, 'id' | 'createdAt' | 'colorKey'>) => {
+    setCustomItems((list) => [
+      ...list,
+      {
+        ...item,
+        id: makeRoutineId(),
+        createdAt: Date.now(),
+        colorKey: ROTATE_COLORS[list.length % ROTATE_COLORS.length],
+      },
+    ]);
+  };
+  const removeCustomItem = (id: string) => setCustomItems((list) => list.filter((i) => i.id !== id));
+  const updateCustomMinutes = (id: string, minutes: number) =>
+    setCustomItems((list) => list.map((i) => (i.id === id ? { ...i, minutes } : i)));
+
   // Awake minutes minus everything already committed — a negative number means
-  // the routine doesn't physically fit in the day.
+  // the routine doesn't physically fit in the day. Removed defaults don't count.
   const awakeMinutes = sleep > wake ? sleep - wake : MINUTES_PER_DAY - wake + sleep;
-  const committedMinutes = studyHours * 60 + workHours * 60 + exercise + meals * 30;
+  const customMinutes = customItems.reduce((sum, i) => sum + i.minutes, 0);
+  const committedMinutes =
+    (isHidden('study') ? 0 : studyHours * 60) +
+    (isHidden('work') ? 0 : workHours * 60) +
+    (isHidden('exercise') ? 0 : exercise) +
+    (isHidden('meals') ? 0 : meals * 30) +
+    customMinutes;
   const freeMinutes = awakeMinutes - committedMinutes;
 
   const onContinue = async () => {
@@ -57,6 +124,8 @@ export default function DailyRoutineScreen() {
         workHours,
         exerciseMinutes: exercise,
         mealsPerDay: meals,
+        customRoutine: customItems,
+        hiddenRoutineDefaults: hiddenDefaults,
       },
     });
     setSaving(false);
@@ -77,7 +146,12 @@ export default function DailyRoutineScreen() {
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
           <Text style={styles.headerTitle}>Daily Routine</Text>
-          <View style={styles.iconBtn} />
+          <Pressable
+            hitSlop={10}
+            onPress={() => setShowAdd(true)}
+            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}>
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+          </Pressable>
         </View>
 
         <ScrollView
@@ -121,43 +195,86 @@ export default function DailyRoutineScreen() {
             onChange={setSleep}
           />
 
-          {/* Steppers */}
-          <StepperQuestion
-            icon="book-outline"
-            color={Palette.primary}
-            tint={Tint.primary}
-            label="Study Hours"
-            display={`${studyHours} h`}
-            onDec={() => setStudyHours((v) => Math.max(0, v - 1))}
-            onInc={() => setStudyHours((v) => Math.min(12, v + 1))}
-          />
-          <StepperQuestion
-            icon="briefcase-outline"
-            color={Palette.secondary}
-            tint={Tint.primary}
-            label="Work Hours"
-            display={`${workHours} h`}
-            onDec={() => setWorkHours((v) => Math.max(0, v - 1))}
-            onInc={() => setWorkHours((v) => Math.min(12, v + 1))}
-          />
-          <StepperQuestion
-            icon="barbell-outline"
-            color={Palette.pink}
-            tint={Tint.pink}
-            label="Exercise"
-            display={`${exercise} min`}
-            onDec={() => setExercise((v) => Math.max(0, v - 15))}
-            onInc={() => setExercise((v) => Math.min(180, v + 15))}
-          />
-          <StepperQuestion
-            icon="restaurant-outline"
-            color={Palette.green}
-            tint={Tint.green}
-            label="Meals"
-            display={`${meals}`}
-            onDec={() => setMeals((v) => Math.max(1, v - 1))}
-            onInc={() => setMeals((v) => Math.min(6, v + 1))}
-          />
+          {/* Steppers — tap the value to type an exact number, or nudge with +/-.
+             Every one of these is removable; only Wake/Sleep above are fixed. */}
+          {!isHidden('study') ? (
+            <StepperQuestion
+              icon="book-outline"
+              color={Palette.primary}
+              tint={Tint.primary}
+              label="Study Hours"
+              value={studyHours}
+              onChange={setStudyHours}
+              min={0}
+              max={12}
+              unit="h"
+              onRemove={() => hideDefault('study')}
+            />
+          ) : null}
+          {!isHidden('work') ? (
+            <StepperQuestion
+              icon="briefcase-outline"
+              color={Palette.secondary}
+              tint={Tint.primary}
+              label="Work Hours"
+              value={workHours}
+              onChange={setWorkHours}
+              min={0}
+              max={12}
+              unit="h"
+              onRemove={() => hideDefault('work')}
+            />
+          ) : null}
+          {!isHidden('exercise') ? (
+            <StepperQuestion
+              icon="barbell-outline"
+              color={Palette.pink}
+              tint={Tint.pink}
+              label="Exercise"
+              value={exercise}
+              onChange={setExercise}
+              min={0}
+              max={180}
+              step={15}
+              unit="min"
+              onRemove={() => hideDefault('exercise')}
+            />
+          ) : null}
+          {!isHidden('meals') ? (
+            <StepperQuestion
+              icon="restaurant-outline"
+              color={Palette.green}
+              tint={Tint.green}
+              label="Meals"
+              value={meals}
+              onChange={setMeals}
+              min={1}
+              max={6}
+              onRemove={() => hideDefault('meals')}
+            />
+          ) : null}
+
+          {/* User-added items — always shown in the order they were added. */}
+          {customItems.map((item) => {
+            const color = (Palette as unknown as Record<string, string>)[item.colorKey] ?? Palette.primary;
+            const tint = (Tint as unknown as Record<string, string>)[item.colorKey] ?? Tint.primary;
+            return (
+              <StepperQuestion
+                key={item.id}
+                icon={item.icon as IoniconName}
+                color={color}
+                tint={tint}
+                label={item.label}
+                value={item.minutes}
+                onChange={(v) => updateCustomMinutes(item.id, v)}
+                min={0}
+                max={720}
+                step={5}
+                unit="min"
+                onRemove={() => removeCustomItem(item.id)}
+              />
+            );
+          })}
 
           {/* Live balance — makes an over-committed routine obvious before saving. */}
           <View style={[styles.balance, freeMinutes < 0 && styles.balanceOver]}>
@@ -190,6 +307,8 @@ export default function DailyRoutineScreen() {
 
         {/* Inline time picker overlay list is rendered within each TimeQuestion. */}
       </SafeAreaView>
+
+      <AddItemSheet visible={showAdd} onClose={() => setShowAdd(false)} onAdd={addCustomItem} />
     </View>
   );
 }
@@ -204,6 +323,7 @@ function QuestionShell({
   tint,
   label,
   right,
+  onRemove,
   children,
 }: {
   icon: IoniconName;
@@ -211,6 +331,8 @@ function QuestionShell({
   tint: string;
   label: string;
   right: ReactNode;
+  /** Shows a trash button after `right`. Omit for the two fixed rows (Wake/Sleep). */
+  onRemove?: () => void;
   children?: ReactNode;
 }) {
   const { Palette, Tint } = useAppTheme();
@@ -223,6 +345,14 @@ function QuestionShell({
         </View>
         <Text style={styles.qLabel}>{label}</Text>
         {right}
+        {onRemove ? (
+          <Pressable
+            hitSlop={8}
+            onPress={onRemove}
+            style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}>
+            <Ionicons name="trash-outline" size={16} color="#E5484D" />
+          </Pressable>
+        ) : null}
       </View>
       {children}
     </View>
@@ -269,38 +399,148 @@ function StepperQuestion({
   color,
   tint,
   label,
-  display,
-  onDec,
-  onInc,
+  value,
+  onChange,
+  min = 0,
+  max = 999,
+  step = 1,
+  unit,
+  onRemove,
 }: {
   icon: IoniconName;
   color: string;
   tint: string;
   label: string;
-  display: string;
-  onDec: () => void;
-  onInc: () => void;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  onRemove?: () => void;
 }) {
-  const { Palette, Tint } = useAppTheme();
-  const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   return (
     <QuestionShell
       icon={icon}
       color={color}
       tint={tint}
       label={label}
+      onRemove={onRemove}
       right={
-        <View style={styles.stepper}>
-          <Pressable onPress={onDec} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-            <Ionicons name="remove" size={18} color={Palette.primary} />
-          </Pressable>
-          <Text style={styles.stepValue}>{display}</Text>
-          <Pressable onPress={onInc} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-            <Ionicons name="add" size={18} color={Palette.primary} />
-          </Pressable>
-        </View>
+        <NumberStepperField
+          value={value}
+          onChange={onChange}
+          min={min}
+          max={max}
+          step={step}
+          unit={unit}
+          title={label}
+        />
       }
     />
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Add item sheet                                                            */
+/* -------------------------------------------------------------------------- */
+
+function AddItemSheet({
+  visible,
+  onClose,
+  onAdd,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onAdd: (item: { label: string; icon: IoniconName; minutes: number }) => void;
+}) {
+  const { Palette, Tint } = useAppTheme();
+  const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
+  const [label, setLabel] = useState('');
+  const [icon, setIcon] = useState<IoniconName>('flag-outline');
+  const [minutes, setMinutes] = useState(30);
+
+  const reset = () => {
+    setLabel('');
+    setIcon('flag-outline');
+    setMinutes(30);
+  };
+
+  const close = () => {
+    reset();
+    onClose();
+  };
+
+  const save = () => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    onAdd({ label: trimmed, icon, minutes });
+    reset();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
+      <View style={styles.sheetBackdrop}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetGrabber} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Add to your routine</Text>
+              <Pressable hitSlop={10} onPress={close}>
+                <Ionicons name="close" size={22} color={Palette.muted} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={styles.fieldLabel}>Name</Text>
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={label}
+                  onChangeText={setLabel}
+                  placeholder="e.g. Commute, Gaming, Family time"
+                  placeholderTextColor={Palette.subtle}
+                  style={styles.input}
+                  returnKeyType="done"
+                />
+              </View>
+
+              <Text style={styles.fieldLabel}>Icon</Text>
+              <View style={styles.iconGrid}>
+                {ADD_ICON_CHOICES.map((ic) => {
+                  const active = ic === icon;
+                  return (
+                    <Pressable
+                      key={ic}
+                      onPress={() => setIcon(ic)}
+                      style={[styles.iconChip, active && { backgroundColor: Palette.primary, borderColor: Palette.primary }]}>
+                      <Ionicons name={ic} size={20} color={active ? '#FFFFFF' : Palette.muted} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <View style={styles.durationRow}>
+                <Text style={styles.stepperLabel}>Duration</Text>
+                <NumberStepperField value={minutes} onChange={setMinutes} min={0} max={720} step={5} unit="min" title="Duration" />
+              </View>
+            </ScrollView>
+
+            <Pressable
+              onPress={save}
+              disabled={!label.trim()}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+              style={({ pressed }) => [
+                styles.continueBtn,
+                styles.sheetSaveBtn,
+                !label.trim() && styles.sheetSaveDisabled,
+                pressed && !!label.trim() && styles.continuePressed,
+              ]}>
+              <Text style={styles.continueText}>Add item</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
   );
 }
 
@@ -334,6 +574,14 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     height: 42,
     borderRadius: 14,
     backgroundColor: Palette.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: Palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -400,6 +648,15 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
   cardRow: { flexDirection: 'row', alignItems: 'center' },
   qIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   qLabel: { flex: 1, fontFamily: FontFamily, fontSize: 16, fontWeight: '700', color: Palette.ink },
+  removeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#FDE7E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
 
   balance: {
     flexDirection: 'row',
@@ -413,17 +670,6 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
   },
   balanceOver: { backgroundColor: '#FDE7E8' },
   balanceText: { flex: 1, fontFamily: FontFamily, fontSize: 13, fontWeight: '600', color: Palette.ink, lineHeight: 18 },
-
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  stepBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: Tint.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: { fontFamily: FontFamily, fontSize: 16, fontWeight: '800', color: Palette.ink, minWidth: 54, textAlign: 'center' },
 
   footer: {
     paddingHorizontal: 20,
@@ -447,5 +693,65 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
   },
   continuePressed: { backgroundColor: Palette.primaryDark, transform: [{ scale: 0.99 }] },
   continueText: { fontFamily: FontFamily, fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
+
+  /* Add-item sheet */
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(16,14,36,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Palette.bg,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    maxHeight: '85%',
+  },
+  sheetGrabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Palette.hairline,
+    marginBottom: 12,
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  sheetTitle: { fontFamily: FontFamily, fontSize: 20, fontWeight: '800', color: Palette.ink },
+  sheetSaveBtn: { marginTop: 16 },
+  sheetSaveDisabled: { opacity: 0.5 },
+
+  fieldLabel: { fontFamily: FontFamily, fontSize: 13, fontWeight: '700', color: Palette.muted, marginTop: 16, marginBottom: 8 },
+  inputWrap: {
+    backgroundColor: Palette.card,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Palette.hairline,
+    paddingHorizontal: 14,
+    height: 52,
+    justifyContent: 'center',
+  },
+  input: { fontFamily: FontFamily, fontSize: 15, fontWeight: '600', color: Palette.ink },
+
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  iconChip: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: Palette.card,
+    borderWidth: 1.5,
+    borderColor: Palette.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Palette.card,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 16,
+  },
+  stepperLabel: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: Palette.ink },
   });
 }

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
@@ -30,13 +30,56 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const animateNext = () =>
   LayoutAnimation.configureNext(LayoutAnimation.create(200, 'easeInEaseOut', 'opacity'));
 
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+const DEFAULT_PLAN_ICON: IoniconName = 'today-outline';
+
+/** A small, relevant set — daily-plan items span many kinds of activities. */
+const PLAN_ICON_CHOICES: IoniconName[] = [
+  'today-outline',
+  'briefcase-outline',
+  'book-outline',
+  'school-outline',
+  'fitness-outline',
+  'walk-outline',
+  'restaurant-outline',
+  'cafe-outline',
+  'medkit-outline',
+  'heart-outline',
+  'people-outline',
+  'call-outline',
+  'chatbubble-outline',
+  'mail-outline',
+  'cart-outline',
+  'cash-outline',
+  'home-outline',
+  'car-outline',
+  'airplane-outline',
+  'game-controller-outline',
+  'musical-notes-outline',
+  'film-outline',
+  'sunny-outline',
+  'moon-outline',
+  'flag-outline',
+  'star-outline',
+];
+
 function prettyDate(d = new Date()): string {
   return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+/** Parses a `YYYY-MM-DD` key back into a local Date (avoids the UTC shift `new Date(string)` causes). */
+function fromDateKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
 export default function DailyPlanScreen() {
   const router = useRouter();
-  const dateKey = toDateKey();
+  // Opened from Calendar with a specific date, or from the Home/tabs shortcut for today.
+  const { date } = useLocalSearchParams<{ date?: string }>();
+  const dateKey = date ?? toDateKey();
+  const isToday = dateKey === toDateKey();
 
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
@@ -49,6 +92,7 @@ export default function DailyPlanScreen() {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [time, setTime] = useState(9 * 60);
+  const [icon, setIcon] = useState<IoniconName>(DEFAULT_PLAN_ICON);
   const [error, setError] = useState<string | null>(null);
 
   const ordered = useMemo(
@@ -64,9 +108,10 @@ export default function DailyPlanScreen() {
     }
     setError(null);
     animateNext();
-    addPlan({ date: dateKey, title: title.trim(), time, note: note.trim() || undefined });
+    addPlan({ date: dateKey, title: title.trim(), time, note: note.trim() || undefined, icon });
     setTitle('');
     setNote('');
+    setIcon(DEFAULT_PLAN_ICON);
   };
 
   return (
@@ -82,8 +127,8 @@ export default function DailyPlanScreen() {
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Daily Plan</Text>
-            <Text style={styles.headerSub}>{prettyDate()}</Text>
+            <Text style={styles.headerTitle}>{isToday ? 'Daily Plan' : 'Day Plan'}</Text>
+            <Text style={styles.headerSub}>{prettyDate(fromDateKey(dateKey))}</Text>
           </View>
           <View style={styles.iconBtn} />
         </View>
@@ -134,6 +179,25 @@ export default function DailyPlanScreen() {
                   style={styles.input}
                 />
               </View>
+
+              <Text style={styles.iconLabel}>Icon</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.iconRow}>
+                {PLAN_ICON_CHOICES.map((ic) => {
+                  const active = ic === icon;
+                  return (
+                    <Pressable
+                      key={ic}
+                      onPress={() => setIcon(ic)}
+                      style={[styles.iconChip, active && styles.iconChipActive]}>
+                      <Ionicons name={ic} size={20} color={active ? '#FFFFFF' : Palette.muted} />
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -273,6 +337,20 @@ function createStyles(Palette: AppPalette) {
 
   /* ClockTimeField brings its own 20px bottom margin — trim it back to 12. */
   clockField: { marginBottom: -8 },
+
+  iconLabel: { fontFamily: FontFamily, fontSize: 13, fontWeight: '700', color: Palette.muted, marginBottom: 8 },
+  iconRow: { gap: 10, paddingVertical: 2, paddingBottom: 4 },
+  iconChip: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: Palette.bg,
+    borderWidth: 1.5,
+    borderColor: Palette.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconChipActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
 
   error: { fontFamily: FontFamily, fontSize: 13, fontWeight: '600', color: '#E5484D', marginBottom: 10 },
 

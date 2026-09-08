@@ -130,7 +130,7 @@ export async function syncReminders(): Promise<SyncResult> {
     return { enabled: false, reason: 'no-permission', ...empty };
   }
 
-  // Wipe our own reminders (leaves a pending "test" notification alone).
+  // Wipe our own reminders before rebuilding the schedule from scratch.
   await cancelByKind(['class', 'plan', 'daily']);
 
   const uid = useAuthStore.getState().fbUser?.uid ?? 'anon';

@@ -46,6 +46,12 @@
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Smart Planner to access your photos so you can set a profile picture."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
@@ -65,7 +71,8 @@
           }
         }
       ],
-      "@react-native-firebase/analytics"
+      "@react-native-firebase/analytics",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
