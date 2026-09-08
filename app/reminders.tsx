@@ -26,7 +26,6 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import {
   getNotificationDiagnostics,
   requestNotificationPermission,
-  sendTestNotification,
   type PermissionState,
 } from '@/lib/services/notifications';
 import { reminderOffsetMinutes, syncReminders, type SyncResult } from '@/lib/services/reminders';
@@ -122,11 +121,7 @@ export default function RemindersScreen() {
 
   const onTimeChange = (minutes: number) => {
     setTime(minutes);
-    // The time field/presets that call this are only rendered while the daily
-    // nudge is already on, so `dailyOn` is always true here.
-    /* v8 ignore start */
     if (dailyOn) void persistDaily(true, minutes);
-    /* v8 ignore stop */
   };
 
   const onToggleMaster = async (on: boolean) => {
@@ -143,19 +138,6 @@ export default function RemindersScreen() {
       }
     }
     await refresh();
-  };
-
-  const onTest = async () => {
-    let ok = false;
-    try {
-      ok = await sendTestNotification();
-    } catch {
-      ok = false;
-    }
-    toast.show(
-      ok ? 'Test reminder scheduled — arriving in about 5 seconds.' : 'Could not schedule the test reminder.',
-      ok ? 'success' : 'error',
-    );
   };
 
   const totalScheduled = summary
@@ -346,11 +328,6 @@ export default function RemindersScreen() {
                   : 'Reminders are turned off.'}
             </Text>
           ) : null}
-
-          <Pressable onPress={onTest} style={({ pressed }) => [styles.testBtn, pressed && styles.pressed]}>
-            <Ionicons name="paper-plane-outline" size={16} color={Palette.primary} />
-            <Text style={styles.testText}>Send a test notification</Text>
-          </Pressable>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -474,19 +451,5 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       textAlign: 'center',
       marginTop: 22,
     },
-
-    testBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      height: 50,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      borderStyle: 'dashed',
-      borderColor: Palette.hairline,
-      marginTop: 14,
-    },
-    testText: { fontFamily: FontFamily, fontSize: 14, fontWeight: '700', color: Palette.primary },
   });
 }

@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,8 +19,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { getAddEntryConfig } from '@/constants/categories';
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { formatTime } from '@/lib/time';
 import { useProfile } from '@/store/auth-store';
-import { useMyClasses } from '@/store/planner-store';
+import { type PlanClass, useMyClasses, usePlannerStore } from '@/store/planner-store';
 
 /* -------------------------------------------------------------------------- */
 /* Grid config                                                                */
@@ -101,9 +105,12 @@ export default function TimetableScreen() {
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const cfg = getAddEntryConfig(useProfile()?.category);
+  const removeClass = usePlannerStore((s) => s.removeClass);
 
   const classes = useMyClasses();
+  const selectedClass = selectedId ? classes.find((c) => c.id === selectedId) ?? null : null;
   // Recurring weekly template — the same classes show every week.
   const events: TTEvent[] = useMemo(
     () =>
@@ -224,8 +231,9 @@ export default function TimetableScreen() {
 
           {/* event blocks */}
           {events.map((e) => (
-            <View
+            <Pressable
               key={e.id}
+              onPress={() => setSelectedId(e.id)}
               style={[
                 styles.event,
                 {
@@ -243,7 +251,7 @@ export default function TimetableScreen() {
               <Text style={[styles.eventTime, { color: e.color }]} numberOfLines={1}>
                 {formatHour(e.start)}
               </Text>
-            </View>
+            </Pressable>
           ))}
 
           {/* current-time line */}
@@ -269,7 +277,133 @@ export default function TimetableScreen() {
           ) : null}
         </View>
       </ScrollView>
+
+      <ClassDetailDialog
+        visible={!!selectedClass}
+        item={selectedClass}
+        onClose={() => setSelectedId(null)}
+        onEdit={(item) => {
+          setSelectedId(null);
+          router.push({ pathname: '/add-class', params: { classId: item.id } });
+        }}
+        onDelete={(item) => {
+          Alert.alert('Delete class', `Delete "${item.subject}"? This can't be undone.`, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                setSelectedId(null);
+                removeClass(item.id);
+              },
+            },
+          ]);
+        }}
+      />
     </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Class detail dialog                                                       */
+/* -------------------------------------------------------------------------- */
+
+function DetailRow({
+  icon,
+  label,
+  value,
+  styles,
+  Palette,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+  Palette: AppPalette;
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <View style={styles.detailIcon}>
+        <Ionicons name={icon} size={16} color={Palette.subtle} />
+      </View>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ClassDetailDialog({
+  visible,
+  item,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  visible: boolean;
+  item: PlanClass | null;
+  onClose: () => void;
+  onEdit: (item: PlanClass) => void;
+  onDelete: (item: PlanClass) => void;
+}) {
+  const { Palette, Tint, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
+  const cfg = getAddEntryConfig(useProfile()?.category);
+  if (!item) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.blurBackdrop} onPress={onClose}>
+        <BlurView
+          intensity={40}
+          tint={isDark ? 'dark' : 'light'}
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+      </Pressable>
+      <View pointerEvents="box-none" style={styles.dialogWrap}>
+        <View style={styles.dialogCard}>
+          <View style={styles.dialogHeader}>
+            <View style={[styles.dialogDot, { backgroundColor: item.color }]} />
+            <Text style={styles.dialogTitle} numberOfLines={2}>
+              {item.subject}
+            </Text>
+            <Pressable hitSlop={10} onPress={onClose}>
+              <Ionicons name="close" size={22} color={Palette.muted} />
+            </Pressable>
+          </View>
+
+          <View style={styles.detailCard}>
+            <DetailRow icon="calendar-outline" label="Day" value={DAY_LABELS[item.day] ?? '—'} styles={styles} Palette={Palette} />
+            <DetailRow
+              icon="time-outline"
+              label="Time"
+              value={`${formatTime(item.start)} – ${formatTime(item.end)}`}
+              styles={styles}
+              Palette={Palette}
+            />
+            <DetailRow icon={cfg.person.icon} label={cfg.person.label} value={item.teacher || '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon={cfg.place.icon} label={cfg.place.label} value={item.room || '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon="notifications-outline" label="Reminder" value={item.reminder || '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon="repeat-outline" label="Repeat" value={item.repeat || '—'} styles={styles} Palette={Palette} />
+          </View>
+
+          <View style={styles.dialogActions}>
+            <Pressable onPress={() => onDelete(item)} style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}>
+              <Ionicons name="trash-outline" size={18} color="#E5484D" />
+            </Pressable>
+            <Pressable
+              onPress={() => onEdit(item)}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+              style={({ pressed }) => [styles.editBtn, pressed && styles.editPressed]}>
+              <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -400,5 +534,57 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     marginLeft: -4,
   },
   nowBar: { flex: 1, height: 2, backgroundColor: '#E5484D', borderRadius: 1 },
+
+  /* class detail dialog */
+  blurBackdrop: { ...StyleSheet.absoluteFillObject },
+  dialogWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  dialogCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: Palette.card,
+    borderRadius: 26,
+    padding: 22,
+    shadowColor: '#3A2E7A',
+    shadowOpacity: 0.2,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 16,
+  },
+  dialogHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  dialogDot: { width: 12, height: 12, borderRadius: 6 },
+  dialogTitle: { flex: 1, fontFamily: FontFamily, fontSize: 19, fontWeight: '800', color: Palette.ink },
+
+  detailCard: { backgroundColor: Palette.bg, borderRadius: 18, paddingHorizontal: 14 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
+  detailIcon: { width: 26, alignItems: 'flex-start' },
+  detailLabel: { width: 84, fontFamily: FontFamily, fontSize: 13, fontWeight: '600', color: Palette.muted },
+  detailValue: { flex: 1, fontFamily: FontFamily, fontSize: 14, fontWeight: '700', color: Palette.ink, textAlign: 'right' },
+
+  dialogActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  deleteBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#FDE7E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editPressed: { backgroundColor: Palette.primaryDark },
+  editText: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   });
 }

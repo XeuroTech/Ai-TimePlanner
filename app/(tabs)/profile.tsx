@@ -1,16 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
 import { useToast } from '@/components/ui/toast';
 import { CATEGORIES, CategoryId, getCategory } from '@/constants/categories';
+import { SUPPORT_EMAIL } from '@/constants/company';
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { usePremium } from '@/hooks/use-premium';
+import { pickAvatar } from '@/lib/services/avatar';
+import { languageLabel } from '@/lib/services/locale';
 import { getNotificationPermission, requestNotificationPermission } from '@/lib/services/notifications';
+import { reportError } from '@/lib/services/observability';
 import { useAuthStore } from '@/store/auth-store';
 import { useBackupStore } from '@/store/backup-store';
 import { useThemeStore } from '@/store/theme-store';
@@ -31,11 +50,10 @@ type Row =
       icon: IoniconName;
       colorKey: string;
       tintKey: string;
-      route?: '/daily-routine' | '/habits' | '/settings' | '/backup';
+      route?: '/daily-routine' | '/habits' | '/settings' | '/backup' | '/language';
       /** Optional status text shown before the chevron (e.g. backup state). */
       value?: string;
     }
-  | { id: string; kind: 'value'; label: string; icon: IoniconName; colorKey: string; tintKey: string; value: string }
   | { id: ToggleId; kind: 'toggle'; label: string; icon: IoniconName; colorKey: string; tintKey: string };
 
 const PREFERENCES: Row[] = [
@@ -43,12 +61,12 @@ const PREFERENCES: Row[] = [
   { id: 'habits', kind: 'nav', label: 'Habit Tracker', icon: 'flame-outline', colorKey: 'pink', tintKey: 'pink', route: '/habits' },
   { id: 'notifications', kind: 'toggle', label: 'Notifications', icon: 'notifications-outline', colorKey: 'orange', tintKey: 'orange' },
   { id: 'darkMode', kind: 'toggle', label: 'Dark Mode', icon: 'moon-outline', colorKey: 'secondary', tintKey: 'primary' },
-  { id: 'language', kind: 'value', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: 'English' },
+  { id: 'language', kind: 'nav', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', route: '/language' },
 ];
 
 const GENERAL: Row[] = [
   { id: 'backup', kind: 'nav', label: 'Backup & Sync', icon: 'cloud-outline', colorKey: 'blue', tintKey: 'blue', route: '/backup' },
-  { id: 'help', kind: 'nav', label: 'Help & Support', icon: 'help-circle-outline', colorKey: 'pink', tintKey: 'pink' },
+  { id: 'help', kind: 'nav', label: 'Help & Support', icon: 'help-circle-outline', colorKey: 'pink', tintKey: 'pink', value: SUPPORT_EMAIL },
   { id: 'settings', kind: 'nav', label: 'Settings', icon: 'settings-outline', colorKey: 'muted', tintKey: 'neutral', route: '/settings' },
 ];
 
@@ -77,14 +95,29 @@ export default function ProfileScreen() {
   const name = profile?.name ?? 'Guest';
   const email = fbUser?.email ?? '';
   const category = getCategory(profile?.category);
+  const avatarUri = profile?.preferences?.avatarUri;
   const { isPremium } = usePremium();
 
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [showNameEdit, setShowNameEdit] = useState(false);
+  const [nameDraft, setNameDraft] = useState(name);
+  const [nameSaving, setNameSaving] = useState(false);
 
   /*
    * Backup state on the row itself, so the user can tell at a glance whether
    * their data is actually going anywhere without opening the screen.
    */
+  const preferences = useMemo<Row[]>(
+    () =>
+      PREFERENCES.map((row) =>
+        row.id === 'language' && row.kind === 'nav'
+          ? { ...row, value: languageLabel(profile?.preferences.language) }
+          : row,
+      ),
+    [profile?.preferences.language],
+  );
+
   const driveConnected = useBackupStore((s) => s.connected);
   const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
   const hydrateBackup = useBackupStore((s) => s.hydrate);
@@ -116,6 +149,48 @@ export default function ProfileScreen() {
   const onPickCategory = async (id: CategoryId) => {
     setShowCatPicker(false);
     if (id !== profile?.category) await updateProfile({ category: id });
+  };
+
+  const onPickAvatar = async () => {
+    const uid = fbUser?.uid;
+    if (!uid || avatarBusy) return;
+    setAvatarBusy(true);
+    try {
+      const res = await pickAvatar(uid, avatarUri);
+      if (res.ok) {
+        await updateProfile({ preferences: { avatarUri: res.uri } });
+        toast.success('Profile picture updated.');
+      } else if (!res.canceled) {
+        toast.show(res.error, 'error');
+      }
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const openNameEdit = () => {
+    setNameDraft(name);
+    setShowNameEdit(true);
+  };
+
+  const onSaveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || nameSaving) return;
+    if (trimmed === name) {
+      setShowNameEdit(false);
+      return;
+    }
+    setNameSaving(true);
+    try {
+      await updateProfile({ name: trimmed });
+      setShowNameEdit(false);
+      toast.success('Name updated.');
+    } catch (e) {
+      reportError(e, 'profile/rename');
+      toast.show('Could not update your name. Please try again.', 'error');
+    } finally {
+      setNameSaving(false);
+    }
   };
 
   const onToggleNotifications = async (value: boolean) => {
@@ -175,8 +250,11 @@ export default function ProfileScreen() {
       <Pressable
         onPress={() => {
           if (row.kind !== 'nav') return;
+          if (row.id === 'help') {
+            Linking.openURL(`mailto:${SUPPORT_EMAIL}`);
+            return;
+          }
           if (row.route) router.push(row.route);
-          else toast.show('Coming soon.', 'info');
         }}
         disabled={row.kind === 'toggle'}
         style={({ pressed }) => [styles.row, pressed && row.kind !== 'toggle' && styles.rowPressed]}>
@@ -194,7 +272,9 @@ export default function ProfileScreen() {
           />
         ) : row.value ? (
           <View style={styles.rowRight}>
-            <Text style={styles.rowValue}>{row.value}</Text>
+            <Text style={styles.rowValue} numberOfLines={1}>
+              {row.value}
+            </Text>
             <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />
           </View>
         ) : (
@@ -219,23 +299,37 @@ export default function ProfileScreen() {
 
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} contentFit="cover" />
+              ) : (
+                <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+              )}
             </View>
             <Pressable
-              onPress={() => router.push('/settings')}
+              onPress={onPickAvatar}
+              disabled={avatarBusy}
+              hitSlop={4}
               style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}>
-              <Ionicons name="pencil" size={14} color={Palette.primary} />
+              {avatarBusy ? (
+                <ActivityIndicator size="small" color={Palette.primary} />
+              ) : (
+                <Ionicons name="pencil" size={14} color={Palette.primary} />
+              )}
             </Pressable>
           </View>
-          <View style={styles.nameRow}>
+          <Pressable
+            onPress={openNameEdit}
+            hitSlop={8}
+            style={({ pressed }) => [styles.nameRow, pressed && styles.pressed]}>
             <Text style={styles.name}>{name}</Text>
+            <Ionicons name="create-outline" size={16} color="rgba(255,255,255,0.85)" />
             {isPremium ? (
               <View style={styles.proBadge}>
                 <Ionicons name="diamond" size={10} color={Palette.primary} />
                 <Text style={styles.proBadgeText}>PRO</Text>
               </View>
             ) : null}
-          </View>
+          </Pressable>
           {email ? <Text style={styles.email}>{email}</Text> : null}
           <Pressable
             onPress={() => setShowCatPicker(true)}
@@ -271,7 +365,7 @@ export default function ProfileScreen() {
 
         {/* Preferences */}
         <Text style={styles.sectionLabel}>Preferences</Text>
-        <View style={styles.card}>{PREFERENCES.map((r, i) => renderRow(r, i === PREFERENCES.length - 1))}</View>
+        <View style={styles.card}>{preferences.map((r, i) => renderRow(r, i === preferences.length - 1))}</View>
 
         {/* General */}
         <Text style={styles.sectionLabel}>General</Text>
@@ -323,6 +417,50 @@ export default function ProfileScreen() {
               );
             })}
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Name editor */}
+      <Modal
+        visible={showNameEdit}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNameEdit(false)}>
+        <Pressable style={styles.blurBackdrop} onPress={() => setShowNameEdit(false)}>
+          <BlurView
+            intensity={40}
+            tint={isDark ? 'dark' : 'light'}
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFill}
+          />
+        </Pressable>
+        <View pointerEvents="box-none" style={styles.dialogWrap}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.sheetTitle}>Edit name</Text>
+            <TextField
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              placeholder="Your name"
+              autoCapitalize="words"
+              autoFocus
+              onSubmitEditing={onSaveName}
+            />
+            <View style={styles.dialogActions}>
+              <Button
+                title="Cancel"
+                variant="secondary"
+                onPress={() => setShowNameEdit(false)}
+                style={styles.dialogBtn}
+              />
+              <Button
+                title="Save"
+                onPress={onSaveName}
+                loading={nameSaving}
+                disabled={!nameDraft.trim()}
+                style={styles.dialogBtn}
+              />
+            </View>
+          </View>
         </View>
       </Modal>
     </View>
@@ -384,7 +522,11 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       justifyContent: 'center',
       borderWidth: 3,
       borderColor: 'rgba(255,255,255,0.5)',
+      overflow: 'hidden',
     },
+    // `overflow: 'hidden'` on the parent alone doesn't reliably clip an
+    // <Image> to the circle on iOS — rounding the image itself is the fix.
+    avatarImg: { width: '100%', height: '100%', borderRadius: 46 },
     avatarText: { fontFamily: FontFamily, fontSize: 38, fontWeight: '800', color: Palette.primary },
     editBtn: {
       position: 'absolute',
@@ -490,6 +632,24 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     catRowLabel: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: Palette.ink },
     catRowBlurb: { fontFamily: FontFamily, fontSize: 13, fontWeight: '500', color: Palette.muted, marginTop: 2 },
 
+    blurBackdrop: { ...StyleSheet.absoluteFillObject },
+    dialogWrap: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    dialogCard: {
+      width: '100%',
+      maxWidth: 380,
+      backgroundColor: Palette.card,
+      borderRadius: 26,
+      padding: 22,
+      ...CARD_SHADOW,
+    },
+    dialogActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    dialogBtn: { flex: 1 },
+
     sectionLabel: {
       fontFamily: FontFamily,
       fontSize: 13,
@@ -513,8 +673,8 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     rowPressed: { opacity: 0.6 },
     rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
     rowLabel: { flex: 1, fontFamily: FontFamily, fontSize: 16, fontWeight: '600', color: Palette.ink },
-    rowRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    rowValue: { fontFamily: FontFamily, fontSize: 14, fontWeight: '600', color: Palette.muted },
+    rowRight: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 150 },
+    rowValue: { fontFamily: FontFamily, fontSize: 12, fontWeight: '600', color: Palette.muted, flexShrink: 1 },
     divider: { height: 1, backgroundColor: Palette.hairline, marginLeft: 54 },
 
     logout: {

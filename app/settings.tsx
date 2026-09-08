@@ -5,27 +5,15 @@ import { Fragment, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useToast } from '@/components/ui/toast';
 import { AppPalette, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { usePremium } from '@/hooks/use-premium';
-import { requestNotificationPermission } from '@/lib/services/notifications';
+import { languageLabel } from '@/lib/services/locale';
 import { useAuthStore } from '@/store/auth-store';
-import { useBackupStore } from '@/store/backup-store';
-import { useThemeStore } from '@/store/theme-store';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
-type ItemId =
-  | 'account'
-  | 'plan'
-  | 'appearance'
-  | 'notifications'
-  | 'language'
-  | 'security'
-  | 'privacy'
-  | 'backup'
-  | 'about';
+type ItemId = 'account' | 'plan' | 'language' | 'security' | 'privacy' | 'terms' | 'about';
 type Item = { id: ItemId; label: string; icon: IoniconName; colorKey: string; tintKey: string; value?: string };
 
 /* -------------------------------------------------------------------------- */
@@ -34,13 +22,8 @@ type Item = { id: ItemId; label: string; icon: IoniconName; colorKey: string; ti
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
-  const setDarkMode = useThemeStore((s) => s.setDarkMode);
-  const notificationsEnabled = useThemeStore((s) => s.notificationsEnabled);
-  const setNotificationsEnabled = useThemeStore((s) => s.setNotificationsEnabled);
   const profile = useAuthStore((s) => s.profile);
-  const driveConnected = useBackupStore((s) => s.connected);
   const { isPremium } = usePremium();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const neutralTint = isDark ? '#26243D' : '#EEF0F4';
@@ -51,9 +34,7 @@ export default function SettingsScreen() {
       items: [
         { id: 'account', label: 'Account', icon: 'person-circle-outline', colorKey: 'primary', tintKey: 'primary', value: profile?.name ?? 'Guest' },
         { id: 'plan', label: 'Subscription', icon: 'diamond-outline', colorKey: 'primary', tintKey: 'primary', value: isPremium ? 'Premium' : 'Free' },
-        { id: 'appearance', label: 'Appearance', icon: 'color-palette-outline', colorKey: 'pink', tintKey: 'pink', value: isDark ? 'Dark' : 'Light' },
-        { id: 'notifications', label: 'Notifications', icon: 'notifications-outline', colorKey: 'orange', tintKey: 'orange', value: notificationsEnabled ? 'On' : 'Off' },
-        { id: 'language', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: 'English' },
+        { id: 'language', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: languageLabel(profile?.preferences.language) },
       ],
     },
     {
@@ -61,14 +42,7 @@ export default function SettingsScreen() {
       items: [
         { id: 'security', label: 'Security', icon: 'lock-closed-outline', colorKey: 'blue', tintKey: 'blue' },
         { id: 'privacy', label: 'Privacy', icon: 'shield-checkmark-outline', colorKey: 'secondary', tintKey: 'primary' },
-        {
-          id: 'backup',
-          label: 'Backup & Sync',
-          icon: 'cloud-outline',
-          colorKey: 'green',
-          tintKey: 'green',
-          value: driveConnected ? 'On' : 'Off',
-        },
+        { id: 'terms', label: 'Terms & Conditions', icon: 'document-text-outline', colorKey: 'orange', tintKey: 'orange' },
       ],
     },
     {
@@ -77,37 +51,17 @@ export default function SettingsScreen() {
     },
   ];
 
-  const onPressItem = async (id: ItemId) => {
-    switch (id) {
-      case 'appearance':
-        setDarkMode(!isDark);
-        return;
-      case 'notifications': {
-        if (notificationsEnabled) {
-          setNotificationsEnabled(false);
-          return;
-        }
-        const status = await requestNotificationPermission();
-        if (status === 'granted') {
-          setNotificationsEnabled(true);
-        } else {
-          toast.show('Notifications permission denied. Enable it from system settings to turn this on.', 'error');
-        }
-        return;
-      }
-      case 'account':
-        router.push('/profile');
-        return;
-      case 'plan':
-        router.push('/premium');
-        return;
-      case 'backup':
-        router.push('/backup');
-        return;
-      default:
-        toast.show('Coming soon.', 'info');
-    }
+  const ROUTES: Record<ItemId, '/profile' | '/premium' | '/language' | '/security' | '/privacy-policy' | '/terms' | '/about'> = {
+    account: '/profile',
+    plan: '/premium',
+    language: '/language',
+    security: '/security',
+    privacy: '/privacy-policy',
+    terms: '/terms',
+    about: '/about',
   };
+
+  const onPressItem = (id: ItemId) => router.push(ROUTES[id]);
 
   const colorFor = (key: string) => (Palette as unknown as Record<string, string>)[key];
   const tintFor = (key: string) => (key === 'neutral' ? neutralTint : (Tint as unknown as Record<string, string>)[key]);

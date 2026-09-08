@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -16,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { useMyTasks, usePlannerStore } from '@/store/planner-store';
+import { type PlanTask, useMyTasks, usePlannerStore } from '@/store/planner-store';
 
 // Enable smooth layout transitions on Android (no-op where unsupported).
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -63,6 +64,7 @@ export default function TasksScreen() {
 
   const tasks = useMyTasks();
   const toggleTask = usePlannerStore((s) => s.toggleTask);
+  const removeTask = usePlannerStore((s) => s.removeTask);
   const [filter, setFilter] = useState<Filter>('all');
 
   const pendingCount = tasks.filter((t) => !t.done).length;
@@ -92,6 +94,30 @@ export default function TasksScreen() {
 
   const onAdd = () => {
     router.push('/add-task');
+  };
+
+  /** Long-press surfaces edit/delete without cluttering the row itself. */
+  const onLongPressTask = (task: PlanTask) => {
+    Alert.alert(task.title, undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Edit', onPress: () => router.push({ pathname: '/add-task', params: { taskId: task.id } }) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('Delete task', `Delete "${task.title}"? This can't be undone.`, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                animateNext();
+                removeTask(task.id);
+              },
+            },
+          ]),
+      },
+    ]);
   };
 
   return (
@@ -150,6 +176,8 @@ export default function TasksScreen() {
               <Pressable
                 key={t.id}
                 onPress={() => toggle(t.id)}
+                onLongPress={() => onLongPressTask(t)}
+                delayLongPress={300}
                 android_ripple={{ color: 'rgba(108,77,255,0.06)' }}
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
                 <View style={[styles.checkbox, t.done && styles.checkboxDone]}>
@@ -178,6 +206,13 @@ export default function TasksScreen() {
                 <View style={[styles.priorityChip, { backgroundColor: p.tint }]}>
                   <Text style={[styles.priorityText, { color: p.color }]}>{t.priority}</Text>
                 </View>
+
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => onLongPressTask(t)}
+                  style={({ pressed }) => [styles.menuBtn, pressed && styles.pressed]}>
+                  <Ionicons name="ellipsis-vertical" size={16} color={Palette.subtle} />
+                </Pressable>
               </Pressable>
             );
           })
@@ -334,6 +369,8 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
 
   priorityChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
   priorityText: { fontFamily: FontFamily, fontSize: 11, fontWeight: '800' },
+  menuBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
+  pressed: { opacity: 0.5 },
 
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16 },
   emptyIcon: {

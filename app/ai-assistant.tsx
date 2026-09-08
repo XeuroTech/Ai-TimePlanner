@@ -110,6 +110,7 @@ export default function AiAssistantScreen() {
   const [typing, setTyping] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<ConversationSummary[] | null>(null);
+  const [renaming, setRenaming] = useState<ConversationSummary | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -359,6 +360,18 @@ export default function AiAssistantScreen() {
     ]);
   };
 
+  const performRename = async (id: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    try {
+      await chatRepo.renameConversation(id, trimmed);
+      await refreshHistory();
+    } catch (e) {
+      reportError(e, 'ai-assistant.renameConversation');
+    }
+    setRenaming(null);
+  };
+
   /* ---------------------------------------------------------------------- */
   /* Render                                                                 */
   /* ---------------------------------------------------------------------- */
@@ -547,6 +560,13 @@ export default function AiAssistantScreen() {
                     </Pressable>
                     <Pressable
                       hitSlop={8}
+                      onPress={() => setRenaming(item)}
+                      accessibilityLabel={`Rename ${item.title}`}
+                      style={({ pressed }) => [styles.historyDelete, pressed && styles.pressed]}>
+                      <Ionicons name="pencil-outline" size={17} color={Palette.subtle} />
+                    </Pressable>
+                    <Pressable
+                      hitSlop={8}
                       onPress={() => confirmDelete(item)}
                       accessibilityLabel={`Delete ${item.title}`}
                       style={({ pressed }) => [styles.historyDelete, pressed && styles.pressed]}>
@@ -559,7 +579,85 @@ export default function AiAssistantScreen() {
           )}
         </View>
       </Modal>
+
+      <RenameDialog
+        visible={!!renaming}
+        initial={renaming?.title ?? ''}
+        onCancel={() => setRenaming(null)}
+        onConfirm={(title) => {
+          if (renaming) void performRename(renaming.id, title);
+        }}
+      />
     </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rename dialog                                                             */
+/* -------------------------------------------------------------------------- */
+
+function RenameDialog({
+  visible,
+  initial,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  initial: string;
+  onCancel: () => void;
+  onConfirm: (title: string) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
+      {visible ? <RenameSheet initial={initial} onCancel={onCancel} onConfirm={onConfirm} /> : null}
+    </Modal>
+  );
+}
+
+function RenameSheet({
+  initial,
+  onCancel,
+  onConfirm,
+}: {
+  initial: string;
+  onCancel: () => void;
+  onConfirm: (title: string) => void;
+}) {
+  const { Palette, Tint } = useAppTheme();
+  const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
+  const [text, setText] = useState(initial);
+
+  return (
+    <Pressable style={styles.renameBackdrop} onPress={onCancel}>
+      <Pressable style={styles.renameSheet} onPress={() => {}}>
+        <Text style={styles.renameTitle}>Rename chat</Text>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          autoFocus
+          selectTextOnFocus
+          placeholder="Chat name"
+          placeholderTextColor={Palette.subtle}
+          style={styles.renameInput}
+          onSubmitEditing={() => text.trim() && onConfirm(text)}
+        />
+        <View style={styles.renameActions}>
+          <Pressable onPress={onCancel} style={({ pressed }) => [styles.renameGhostBtn, pressed && styles.pressed]}>
+            <Text style={styles.renameGhostText}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => text.trim() && onConfirm(text)}
+            disabled={!text.trim()}
+            style={({ pressed }) => [
+              styles.renamePrimaryBtn,
+              !text.trim() && styles.renamePrimaryDisabled,
+              pressed && !!text.trim() && styles.pressed,
+            ]}>
+            <Text style={styles.renamePrimaryText}>Save</Text>
+          </Pressable>
+        </View>
+      </Pressable>
+    </Pressable>
   );
 }
 
@@ -863,5 +961,59 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  renameBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(12,10,28,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  renameSheet: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: Palette.card,
+    borderRadius: 26,
+    padding: 22,
+    shadowColor: '#000000',
+    shadowOpacity: 0.28,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 16,
+  },
+  renameTitle: { fontFamily: FontFamily, fontSize: 17, fontWeight: '800', color: Palette.ink, marginBottom: 14 },
+  renameInput: {
+    backgroundColor: Palette.bg,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Palette.hairline,
+    paddingHorizontal: 16,
+    height: 52,
+    fontFamily: FontFamily,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Palette.ink,
+  },
+  renameActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  renameGhostBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Palette.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  renameGhostText: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: Palette.muted },
+  renamePrimaryBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  renamePrimaryDisabled: { opacity: 0.4 },
+  renamePrimaryText: { fontFamily: FontFamily, fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   });
 }
