@@ -55,6 +55,8 @@ export type PlanItem = {
   title: string;
   time: number; // minutes from midnight
   note?: string;
+  /** Ionicon name chosen when the plan was created; falls back to a default in the UI. */
+  icon?: string;
   done: boolean;
   createdAt: number;
   /** Epoch ms of completion — see the note on `PlanTask.completedAt`. */
@@ -67,9 +69,11 @@ type PlannerState = {
   plans: PlanItem[];
 
   addClass: (input: Omit<PlanClass, 'id' | 'uid' | 'createdAt'>) => void;
+  updateClass: (id: string, patch: Partial<Omit<PlanClass, 'id' | 'uid' | 'createdAt'>>) => void;
   removeClass: (id: string) => void;
 
   addTask: (input: Omit<PlanTask, 'id' | 'uid' | 'createdAt' | 'done'>) => void;
+  updateTask: (id: string, patch: Partial<Omit<PlanTask, 'id' | 'uid' | 'createdAt' | 'done' | 'completedAt'>>) => void;
   toggleTask: (id: string) => void;
   removeTask: (id: string) => void;
 
@@ -108,6 +112,8 @@ export const usePlannerStore = create<PlannerState>()(
             { ...input, id: makeId(), uid: currentUid(), createdAt: Date.now() },
           ],
         })),
+      updateClass: (id, patch) =>
+        set((s) => ({ classes: s.classes.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
       removeClass: (id) => set((s) => ({ classes: s.classes.filter((c) => c.id !== id) })),
 
       addTask: (input) =>
@@ -117,6 +123,8 @@ export const usePlannerStore = create<PlannerState>()(
             { ...input, id: makeId(), uid: currentUid(), done: false, createdAt: Date.now() },
           ],
         })),
+      updateTask: (id, patch) =>
+        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
       toggleTask: (id) =>
         set((s) => ({
           tasks: s.tasks.map((t) =>

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo } from 'react';
@@ -45,8 +46,7 @@ type ScheduleItem = {
   color: string;
   tint: string;
   icon: IoniconName;
-  /** Daily-plan rows are tickable inline; class rows are not. */
-  planId?: string;
+  /** Daily-plan rows show a strike-through once done; class rows never do. */
   done?: boolean;
 };
 
@@ -102,6 +102,7 @@ export default function HomeScreen() {
 
   const profile = useAuthStore((s) => s.profile);
   const firstName = profile?.name?.trim().split(' ')[0] || 'there';
+  const avatarUri = profile?.preferences?.avatarUri;
 
   // Persona-aware wording (e.g. "Add Class" -> "Add Appointment" for a doctor).
   const cfg = getAddEntryConfig(profile?.category);
@@ -111,7 +112,6 @@ export default function HomeScreen() {
   const tasks = useMyTasks();
   const todaysPlans = useMyPlans(dateKey);
   const toggleTask = usePlannerStore((s) => s.toggleTask);
-  const togglePlan = usePlannerStore((s) => s.togglePlan);
   const unread = useUnreadNotificationCount();
   const habits = useHabitSummary(dateKey);
 
@@ -138,14 +138,13 @@ export default function HomeScreen() {
 
     const fromPlans: ScheduleItem[] = todaysPlans.map((p) => ({
       id: `p-${p.id}`,
-      planId: p.id,
       minutes: p.time,
       time: formatTime(p.time),
       title: p.title,
       location: p.note,
       color: Palette.primary,
       tint: Tint.primary,
-      icon: 'today' as IoniconName,
+      icon: (p.icon as IoniconName | undefined) ?? 'today-outline',
       done: p.done,
     }));
 
@@ -161,16 +160,11 @@ export default function HomeScreen() {
   const openDailyPlan = () => router.push('/daily-plan');
   const onAiPress = () => router.push('/ai-assistant');
   const onQuickAction = (id: string) => {
-    // onQuickAction is only ever called with an id from the fixed
-    // QUICK_ACTIONS list (q1-q4), so the implicit "no match" fall-through
-    // at the end of this chain can never be reached.
-    /* v8 ignore start */
     if (id === 'q1') router.push('/add-class');
     else if (id === 'q2') router.push('/add-task');
     else if (id === 'q3') onAiPress();
     // q4 opens reminder *settings*, not the read-only inbox.
     else if (id === 'q4') router.push('/reminders');
-    /* v8 ignore stop */
   };
 
   return (
@@ -211,7 +205,11 @@ export default function HomeScreen() {
               ) : null}
             </Pressable>
             <Pressable onPress={() => router.push('/profile')} style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}>
-              <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} contentFit="cover" />
+              ) : (
+                <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+              )}
             </Pressable>
           </View>
         </View>
@@ -271,19 +269,11 @@ export default function HomeScreen() {
               <View key={item.id}>
                 <View style={styles.scheduleRow}>
                   <Text style={styles.scheduleTime}>{item.time}</Text>
-                  {/* Plan rows tick off in place; class rows are display-only. */}
-                  {item.planId ? (
-                    <Pressable
-                      hitSlop={8}
-                      onPress={() => togglePlan(item.planId as string)}
-                      style={[styles.scheduleCheck, item.done && styles.scheduleCheckDone]}>
-                      {item.done ? <Ionicons name="checkmark" size={16} color="#FFFFFF" /> : null}
-                    </Pressable>
-                  ) : (
-                    <View style={[styles.scheduleIcon, { backgroundColor: item.tint }]}>
-                      <Ionicons name={item.icon} size={18} color={item.color} />
-                    </View>
-                  )}
+                  {/* Purely informational — daily plans are ticked off from the
+                     Daily Plan screen, not from this at-a-glance summary. */}
+                  <View style={[styles.scheduleIcon, { backgroundColor: item.tint }]}>
+                    <Ionicons name={item.icon} size={18} color={item.color} />
+                  </View>
                   <View style={styles.scheduleBody}>
                     <Text style={[styles.scheduleTitle, item.done && styles.scheduleTitleDone]}>
                       {item.title}
@@ -340,17 +330,12 @@ export default function HomeScreen() {
               return (
                 <View key={t.id}>
                   <View style={styles.taskRow}>
-                    {/* Was a decorative View — now the same toggle as the Tasks tab.
-                        `upcoming` is filtered to `!t.done`, so t.done is always
-                        false for every row rendered here — the "done" styling
-                        and checkmark exist for shared-code clarity with the
-                        Tasks tab but can never actually show in this list. */}
+                    {/* Was a decorative View — now the same toggle as the Tasks tab. */}
                     <Pressable
                       hitSlop={8}
                       onPress={() => toggleTask(t.id)}
-                      /* v8 ignore next */
                       style={[styles.taskCheck, t.done && styles.taskCheckDone]}>
-                      {/* v8 ignore next */ t.done ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
+                      {t.done ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
                     </Pressable>
                     <View style={styles.taskBody}>
                       <Text style={styles.taskTitle}>{t.title}</Text>
@@ -497,8 +482,12 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
     backgroundColor: Palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     ...CARD_SHADOW,
   },
+  // `overflow: 'hidden'` on the parent alone doesn't reliably clip an
+  // <Image> to the circle on iOS — rounding the image itself is the fix.
+  avatarImg: { width: '100%', height: '100%', borderRadius: 23 },
   avatarText: { fontFamily: FontFamily, fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
 
   /* quote */
@@ -579,17 +568,6 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
   scheduleTitleDone: { color: Palette.subtle, textDecorationLine: 'line-through' },
   scheduleLocation: { fontFamily: FontFamily, fontSize: 13, fontWeight: '500', color: Palette.muted, marginTop: 2 },
   scheduleDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
-  scheduleCheck: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#CFC7F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  scheduleCheckDone: { backgroundColor: Palette.green, borderColor: Palette.green },
 
   /* habits summary */
   habitCard: {

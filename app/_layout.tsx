@@ -133,6 +133,11 @@ export default function RootLayout() {
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="reminders" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="language" options={{ headerShown: false }} />
+          <Stack.Screen name="security" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms" options={{ headerShown: false }} />
+          <Stack.Screen name="about" options={{ headerShown: false }} />
           <Stack.Screen name="backup" options={{ headerShown: false }} />
           {/* Google OAuth deep-link landing route - see app/oauthredirect.tsx */}
           <Stack.Screen name="oauthredirect" options={{ headerShown: false }} />

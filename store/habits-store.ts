@@ -24,8 +24,18 @@ import { useAuthStore } from '@/store/auth-store';
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/** Keys into the palette/tint maps, so habits re-theme with dark mode. */
-export type HabitColorKey = 'primary' | 'blue' | 'green' | 'orange' | 'pink';
+/**
+ * Keys into the palette/tint maps, so habits re-theme with dark mode.
+ * `'custom'` opts out of re-theming — `customColor` is a fixed hex instead.
+ */
+export type HabitColorKey = 'primary' | 'blue' | 'green' | 'orange' | 'pink' | 'custom';
+
+/**
+ * `'counter'` — tap adds `step` toward `target` (e.g. 8 glasses of water).
+ * `'checkbox'` — a single tap marks it done for the day; no partial progress.
+ * Chosen explicitly when the habit is created, not inferred from `unit`.
+ */
+export type HabitKind = 'counter' | 'checkbox';
 
 export type Habit = {
   id: string;
@@ -34,11 +44,14 @@ export type Habit = {
   /** Ionicon name. */
   icon: string;
   colorKey: HabitColorKey;
-  /** Display unit, e.g. `glasses`, `min`, `pages`. Empty string = done/not-done. */
+  /** Hex color, used when `colorKey === 'custom'`. */
+  customColor?: string;
+  kind: HabitKind;
+  /** Display unit, e.g. `glasses`, `min`, `pages`. Ignored for `'checkbox'` habits. */
   unit: string;
-  /** How much one tap adds. */
+  /** How much one tap adds. Always 1 for `'checkbox'` habits. */
   step: number;
-  /** Value that counts as "done for today". */
+  /** Value that counts as "done for today". Always 1 for `'checkbox'` habits. */
   target: number;
   createdAt: number;
   archived?: boolean;
@@ -70,6 +83,8 @@ type HabitsState = {
   removeHabit: (id: string) => void;
   /** Advances a habit by one step; taps past the target wrap back to zero. */
   bumpHabit: (id: string, dateKey?: string) => void;
+  /** Retreats a habit by one step (floored at 0) — undoes an accidental tap. */
+  decrementHabit: (id: string, dateKey?: string) => void;
   /** Writes an exact value (used by undo / long-press reset). */
   setHabitValue: (id: string, value: number, dateKey?: string) => void;
   clearAll: () => void;
@@ -216,6 +231,16 @@ export const useHabitsStore = create<HabitsState>()(
           return { log: { ...s.log, [id]: { ...(s.log[id] ?? {}), [dateKey]: next } } };
         }),
 
+      decrementHabit: (id, dateKey = toDateKey()) =>
+        set((s) => {
+          const habit = s.habits.find((h) => h.id === id);
+          if (!habit) return s;
+          const step = Math.max(1, habit.step);
+          const current = s.log[id]?.[dateKey] ?? 0;
+          const next = Math.max(0, current - step);
+          return { log: { ...s.log, [id]: { ...(s.log[id] ?? {}), [dateKey]: next } } };
+        }),
+
       setHabitValue: (id, value, dateKey = toDateKey()) =>
         set((s) => ({
           log: {
@@ -229,7 +254,19 @@ export const useHabitsStore = create<HabitsState>()(
     {
       name: '@aip/habits',
       storage: zustandStorage,
-      version: 1,
+      version: 2,
+      /** v1 -> v2 added `kind`, inferred from the old unit-emptiness convention. */
+      migrate: (persisted, version) => {
+        const state = persisted as { habits?: (Habit & { kind?: HabitKind })[]; log?: HabitLog };
+        if (version >= 2 || !state) return state;
+        return {
+          ...state,
+          habits: (state.habits ?? []).map((h) => ({
+            ...h,
+            kind: h.kind ?? (h.unit?.trim() ? 'counter' : 'checkbox'),
+          })),
+        };
+      },
     },
   ),
 );

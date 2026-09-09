@@ -1,30 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppPalette, AppTint, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { formatTime, toDateKey } from '@/lib/time';
+import { useMyClasses, useMyPlans } from '@/store/planner-store';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/* -------------------------------------------------------------------------- */
-/* Events                                                                     */
-/* Keyed by `${year}-${month}-${day}` (month is 0-based).                     */
-/* TODO(backend): load events for the visible month from your API.            */
-/* -------------------------------------------------------------------------- */
-
 type CalEvent = { id: string; title: string; time: string; color: string };
 
-function keyFor(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
 const TODAY = new Date();
-// No mock data — events come from the local calendar store once created.
-const EVENTS: Record<string, CalEvent[]> = {};
 
 type Cell = { date: Date; inMonth: boolean };
 
@@ -43,6 +33,11 @@ function buildMonth(year: number, month: number): Cell[] {
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
+/** Monday = 0 … Sunday = 6, matching `PlanClass.day`. */
+function weekdayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -53,6 +48,9 @@ export default function CalendarScreen() {
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [view, setView] = useState({ year: TODAY.getFullYear(), month: TODAY.getMonth() });
   const [selected, setSelected] = useState(new Date(TODAY));
+
+  const classes = useMyClasses();
+  const plans = useMyPlans();
 
   const cells = useMemo(() => buildMonth(view.year, view.month), [view]);
   const monthLabel = new Date(view.year, view.month, 1).toLocaleDateString('en-US', {
@@ -67,7 +65,27 @@ export default function CalendarScreen() {
     });
   };
 
-  const selectedEvents = EVENTS[keyFor(selected)] ?? [];
+  /**
+   * Classes are a recurring weekly template (no calendar date of their own),
+   * so they show up on every occurrence of their weekday; daily-plan items
+   * are tied to one exact date. Combining both is what makes this the same
+   * "what's on today" view as the Home screen and the Timetable grid.
+   */
+  const eventsFor = useCallback(
+    (date: Date): CalEvent[] => {
+      const dateKey = toDateKey(date);
+      const fromClasses: CalEvent[] = classes
+        .filter((c) => c.day === weekdayIndex(date))
+        .map((c) => ({ id: `c-${c.id}`, title: c.subject, time: formatTime(c.start), color: c.color }));
+      const fromPlans: CalEvent[] = plans
+        .filter((p) => p.date === dateKey)
+        .map((p) => ({ id: `p-${p.id}`, title: p.title, time: formatTime(p.time), color: Palette.primary }));
+      return [...fromClasses, ...fromPlans];
+    },
+    [classes, plans, Palette.primary],
+  );
+
+  const selectedEvents = useMemo(() => eventsFor(selected), [selected, eventsFor]);
   const selectedLabel = selected.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
 
   return (
@@ -121,7 +139,7 @@ export default function CalendarScreen() {
               {cells.map((cell) => {
                 const isSelected = sameDay(cell.date, selected);
                 const isToday = sameDay(cell.date, TODAY);
-                const hasEvents = (EVENTS[keyFor(cell.date)] ?? []).length > 0;
+                const hasEvents = eventsFor(cell.date).length > 0;
                 return (
                   <Pressable
                     key={cell.date.toISOString()}
@@ -138,23 +156,16 @@ export default function CalendarScreen() {
                         {cell.date.getDate()}
                       </Text>
                     </View>
-                    {
-                      // EVENTS is a hardcoded empty stub (see below) — hasEvents is
-                      // always false until a real events source is wired in, so
-                      // only the placeholder arm below ever renders.
-                      /* v8 ignore start */
-                      hasEvents ? (
-                        <View
-                          style={[
-                            styles.eventDot,
-                            { backgroundColor: isSelected ? '#FFFFFF' : Palette.primary },
-                          ]}
-                        />
-                      ) : (
-                        <View style={styles.eventDotPlaceholder} />
-                      )
-                      /* v8 ignore stop */
-                    }
+                    {hasEvents ? (
+                      <View
+                        style={[
+                          styles.eventDot,
+                          { backgroundColor: isSelected ? '#FFFFFF' : Palette.primary },
+                        ]}
+                      />
+                    ) : (
+                      <View style={styles.eventDotPlaceholder} />
+                    )}
                   </Pressable>
                 );
               })}
@@ -173,9 +184,6 @@ export default function CalendarScreen() {
               <Text style={styles.emptyText}>No events scheduled</Text>
             </View>
           ) : (
-            // EVENTS is a hardcoded empty stub, so selectedEvents is always []
-            // and this branch (and the .map callback below) never runs.
-            /* v8 ignore next 13 */
             selectedEvents.map((e) => (
               <View key={e.id} style={styles.eventCard}>
                 <View style={[styles.eventAccent, { backgroundColor: e.color }]} />
@@ -191,11 +199,10 @@ export default function CalendarScreen() {
           )}
         </ScrollView>
 
-        {/* Floating add event */}
+        {/* Floating add event — a class is a weekly template, so "add" for a
+           specific calendar date always means a Daily Plan item on that date. */}
         <Pressable
-          onPress={() => {
-            /* TODO(backend): open the Add Event flow. */
-          }}
+          onPress={() => router.push({ pathname: '/daily-plan', params: { date: toDateKey(selected) } })}
           android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true }}
           style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}>
           <Ionicons name="add" size={30} color="#FFFFFF" />

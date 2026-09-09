@@ -26,6 +26,30 @@ export type Preferences = {
   planCycle?: 'monthly' | 'yearly';
   /** ISO timestamp of when premium was activated. */
   planSince?: string;
+
+  /** file:// URI of the profile picture, copied into the app's document directory. */
+  avatarUri?: string;
+
+  /** ISO 639-1 code (e.g. `en`, `ur`) of the user's preferred language. */
+  language?: string;
+
+  /** User-defined extras on the Daily Routine screen, in the order they were added. */
+  customRoutine?: RoutineItem[];
+  /** Built-in Daily Routine cards the user removed (everything except wake/sleep is removable). */
+  hiddenRoutineDefaults?: DefaultRoutineKey[];
+};
+
+export type DefaultRoutineKey = 'study' | 'work' | 'exercise' | 'meals';
+
+/** A user-added Daily Routine entry (app/daily-routine.tsx) — everyone's routine differs. */
+export type RoutineItem = {
+  id: string;
+  label: string;
+  /** Ionicon name. Loosely typed here since this data-layer file has no RN/vector-icons import. */
+  icon: string;
+  colorKey: 'primary' | 'blue' | 'green' | 'orange' | 'pink';
+  minutes: number;
+  createdAt: number;
 };
 
 export type LocalProfile = {

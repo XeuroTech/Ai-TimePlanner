@@ -103,7 +103,7 @@ export async function canDeliverNotifications(): Promise<boolean> {
 /* Scheduling primitives                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type ReminderKind = 'class' | 'plan' | 'daily' | 'test';
+export type ReminderKind = 'class' | 'plan' | 'daily';
 
 /** Payload attached to every notification we schedule. */
 export type ReminderData = {
@@ -167,16 +167,6 @@ export async function scheduleOnce(c: ScheduleContent, date: Date): Promise<stri
   return schedule(c, {
     type: Notifications.SchedulableTriggerInputTypes.DATE,
     date,
-    channelId: REMINDER_CHANNEL_ID,
-  });
-}
-
-/** Fires once after `seconds`. Used by the "send a test" action. */
-export async function scheduleInSeconds(c: ScheduleContent, seconds: number): Promise<string | null> {
-  return schedule(c, {
-    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-    seconds: Math.max(1, Math.round(seconds)),
-    repeats: false,
     channelId: REMINDER_CHANNEL_ID,
   });
 }
@@ -307,19 +297,4 @@ export async function getNotificationDiagnostics(): Promise<NotificationDiagnost
     channelImportance,
     platform: Platform.OS,
   };
-}
-
-/** Posts a notification a few seconds out so the user can confirm delivery. */
-export async function sendTestNotification(): Promise<boolean> {
-  const status = await requestNotificationPermission();
-  if (status !== 'granted') return false;
-  const id = await scheduleInSeconds(
-    {
-      title: 'Notifications are working',
-      body: 'This is a test reminder from your planner.',
-      data: { kind: 'test', icon: 'notifications-outline', colorKey: 'primary' },
-    },
-    5,
-  );
-  return id !== null;
 }
