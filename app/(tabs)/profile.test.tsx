@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 vi.mock('@expo/vector-icons', () => ({
   Ionicons: (props: any) => <span data-testid="icon" data-name={props.name} />,
@@ -127,28 +127,29 @@ describe('ProfileScreen', () => {
     expect(mocks.router.push).toHaveBeenCalledWith('/settings');
   });
 
-  it('navigates to /settings from the avatar edit button and to /premium from the banner', () => {
+  it('the avatar edit button does not navigate (it edits the avatar in place) while the "Upgrade to Premium" banner still navigates to /premium', () => {
     renderScreen();
     const icons = screen.getAllByTestId('icon');
     const pencil = icons.find((n) => n.getAttribute('data-name') === 'pencil')!;
     fireEvent.click(pencil);
-    expect(mocks.router.push).toHaveBeenCalledWith('/settings');
+    // Signed out (no fbUser) -> onPickAvatar no-ops rather than opening a picker.
+    expect(mocks.router.push).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Upgrade to Premium'));
     expect(mocks.router.push).toHaveBeenCalledWith('/premium');
   });
 
-  it('shows a "Coming soon" toast for a nav row with no route (Help & Support)', () => {
+  it('opens a mailto link for Help & Support instead of navigating', () => {
+    const openURL = vi.spyOn(Linking, 'openURL').mockImplementation(() => Promise.resolve());
     renderScreen();
     fireEvent.click(screen.getByText('Help & Support'));
-    expect(screen.getByText('Coming soon.')).toBeTruthy();
+    expect(openURL).toHaveBeenCalledWith(expect.stringContaining('mailto:'));
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it('does nothing when pressing a "value" row (Language)', () => {
+  it('navigates to /language from the Language row', () => {
     renderScreen();
     fireEvent.click(screen.getByText('Language'));
-    expect(mocks.router.push).not.toHaveBeenCalled();
-    expect(screen.queryByText('Coming soon.')).toBeNull();
+    expect(mocks.router.push).toHaveBeenCalledWith('/language');
   });
 
   it.each([

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('expo-router', () => ({ useRouter: () => mocks.router }));
+vi.mock('expo-router', () => ({ useRouter: () => mocks.router, useLocalSearchParams: () => ({}) }));
 vi.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 vi.mock('expo-haptics', () => ({ selectionAsync: vi.fn(async () => {}) }));
 vi.mock('@expo/vector-icons', () => ({
@@ -57,6 +57,7 @@ vi.mock('@/store/planner-store', () => ({
   usePlannerStore: Object.assign((selector: any) => selector(mocks.plannerState), {
     getState: () => mocks.plannerState,
   }),
+  useMyClasses: () => mocks.plannerState.classes,
 }));
 // add-class.tsx pulls in REMINDER_OPTIONS from lib/services/reminders.ts, whose
 // module scope wires up expo-notifications and reads the theme store — neither
@@ -247,7 +248,8 @@ describe('AddClassScreen', () => {
     render(<AddClassScreen />);
     fireEvent.change(screen.getByPlaceholderText('e.g. Appointment'), { target: { value: 'X' } });
     const hits = getColorHits();
-    expect(hits).toHaveLength(7);
+    // 7 preset swatches + 1 trailing custom-color swatch.
+    expect(hits).toHaveLength(8);
     fireEvent.click(hits[2]); // green
     fireEvent.click(screen.getByText('Save Event'));
     expect(mocks.plannerState.addClass).toHaveBeenCalledWith(expect.objectContaining({ color: '#4CD964' }));

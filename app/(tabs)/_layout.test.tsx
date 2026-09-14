@@ -17,11 +17,12 @@ vi.mock('@/lib/storage', () => ({
 
 vi.mock('expo-haptics', () => ({ impactAsync: vi.fn(), ImpactFeedbackStyle: { Light: 'Light' } }));
 
-// @react-navigation/elements' real PlatformPressable (used by HapticTab, which
-// TabLayout wires up as tabBarButton) pulls in a .png asset that Vitest's
-// module loader can't parse; HapticTab itself is already unit-tested
+// HapticTab (which TabLayout wires up as tabBarButton) imports PlatformPressable
+// from 'expo-router/react-navigation', not '@react-navigation/elements' directly
+// — mocking the latter alone leaves the former's real module graph (native-only
+// navigation theming) loaded for real. HapticTab itself is already unit-tested
 // separately, so a minimal stand-in is enough here.
-vi.mock('@react-navigation/elements', () => ({
+vi.mock('expo-router/react-navigation', () => ({
   PlatformPressable: (props: any) => <button {...props} />,
 }));
 

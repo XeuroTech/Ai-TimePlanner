@@ -90,6 +90,7 @@ function makeHabit(overrides: Partial<any> = {}) {
     name: 'Drink water',
     icon: 'water-outline',
     colorKey: 'blue',
+    kind: 'counter',
     unit: 'glasses',
     step: 1,
     target: 8,
@@ -249,8 +250,10 @@ describe('HabitsScreen — editor create flow', () => {
 
     expect(mocks.habitsState.addHabit).toHaveBeenCalledWith({
       name: 'Meditate',
-      icon: 'leaf-outline',
+      icon: 'flag-outline',
       colorKey: 'primary',
+      customColor: undefined,
+      kind: 'checkbox',
       unit: '',
       step: 1,
       target: 1,
@@ -281,6 +284,8 @@ describe('HabitsScreen — editor create flow', () => {
     render(<HabitsScreen />);
     fireEvent.click(screen.getByText('Add your first habit'));
     fireEvent.change(screen.getByPlaceholderText('e.g. Drink water'), { target: { value: 'Read' } });
+    // Unit/steppers only render once the habit is a Counter (the default draft is Checkbox).
+    fireEvent.click(screen.getByText('Counter'));
     fireEvent.change(screen.getByPlaceholderText('glasses, min, pages…'), { target: { value: 'pages' } });
 
     const targetRow = screen.getByText('Daily target').parentElement as HTMLElement;
@@ -344,6 +349,8 @@ describe('HabitsScreen — editor edit/delete flow', () => {
       name: 'Drink more water',
       icon: 'water-outline',
       colorKey: 'blue',
+      customColor: undefined,
+      kind: 'counter',
       unit: 'glasses',
       step: 1,
       target: 8,
@@ -488,16 +495,20 @@ describe('HabitsScreen — theme and pressed-style branches', () => {
     render(<HabitsScreen />);
     fireEvent.click(screen.getByText('Add your first habit'));
     fireEvent.change(screen.getByPlaceholderText('e.g. Drink water'), { target: { value: 'Read' } });
+    // Unit/steppers only render once the habit is a Counter (the default draft is Checkbox).
+    fireEvent.click(screen.getByText('Counter'));
     fireEvent.change(screen.getByPlaceholderText('glasses, min, pages…'), { target: { value: 'pages' } });
 
     const stepRow = screen.getByText('Per tap').parentElement as HTMLElement;
     const decBtn = stepRow.querySelector('[data-icon="remove"][data-size="18"]')!.parentElement!;
     const incBtn = stepRow.querySelector('[data-icon="add"][data-size="18"]')!.parentElement!;
     fireEvent.mouseDown(decBtn);
-    await waitFor(() => expect(getComputedStyle(decBtn).opacity).toBe('0.5'), { timeout: 3000 });
+    // NumberStepperField's own pressed style is 0.6, distinct from this
+    // screen's 0.5 convention used elsewhere.
+    await waitFor(() => expect(getComputedStyle(decBtn).opacity).toBe('0.6'), { timeout: 3000 });
     fireEvent.mouseUp(decBtn);
     fireEvent.mouseDown(incBtn);
-    await waitFor(() => expect(getComputedStyle(incBtn).opacity).toBe('0.5'), { timeout: 3000 });
+    await waitFor(() => expect(getComputedStyle(incBtn).opacity).toBe('0.6'), { timeout: 3000 });
     fireEvent.mouseUp(incBtn);
 
     fireEvent.click(incBtn); // step starts at 1 -> 2

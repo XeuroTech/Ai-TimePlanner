@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('expo-router', () => ({ useRouter: () => mocks.router }));
+vi.mock('expo-router', () => ({ useRouter: () => mocks.router, useLocalSearchParams: () => ({}) }));
 vi.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 vi.mock('@expo/vector-icons', () => ({
   Ionicons: (props: any) => <span data-testid="icon" data-name={props.name} />,
@@ -51,6 +51,7 @@ vi.mock('@/store/planner-store', () => ({
   usePlannerStore: Object.assign((selector: any) => selector(mocks.plannerState), {
     getState: () => mocks.plannerState,
   }),
+  useMyTasks: () => mocks.plannerState.tasks,
 }));
 
 import AddTaskScreen from './add-task';

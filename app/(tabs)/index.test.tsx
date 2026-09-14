@@ -126,17 +126,19 @@ describe('HomeScreen — populated schedule', () => {
     expect(screen.getByText('1 of 2 done today')).toBeTruthy();
   });
 
-  it('toggles a done plan item back to pending when its checkbox is pressed', () => {
+  it('shows a done plan item with a struck-through title (this summary is read-only — ticking off happens on the Daily Plan screen)', () => {
     usePlannerStore.setState({
       classes: [],
       tasks: [],
       plans: [{ id: 'p1', uid: 'u1', date: TODAY_KEY, title: 'Read', time: 480, done: true, createdAt: 0 }],
     });
     render(<HomeScreen />);
-    const checkIcon = screen.getAllByTestId('icon').find((el) => el.getAttribute('data-name') === 'checkmark');
-    expect(checkIcon).toBeTruthy();
-    fireEvent.click(checkIcon!);
-    expect(usePlannerStore.getState().plans[0].done).toBe(false);
+    const title = screen.getByText('Read');
+    // jsdom's getComputedStyle resolves the `textDecoration` shorthand from a
+    // stylesheet-applied class but not the `textDecorationLine` longhand.
+    expect(getComputedStyle(title).textDecoration).toBe('line-through');
+    // No toggle affordance here.
+    expect(usePlannerStore.getState().plans[0].done).toBe(true);
   });
 });
 

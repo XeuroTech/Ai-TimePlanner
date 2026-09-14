@@ -103,7 +103,7 @@ export async function canDeliverNotifications(): Promise<boolean> {
 /* Scheduling primitives                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type ReminderKind = 'class' | 'plan' | 'daily';
+export type ReminderKind = 'class' | 'plan' | 'daily' | 'test';
 
 /** Payload attached to every notification we schedule. */
 export type ReminderData = {
@@ -182,6 +182,22 @@ async function schedule(
     // A single bad reminder must never break a save or an app start.
     return null;
   }
+}
+
+/**
+ * Schedules a one-off notification ~5s out, so a user can confirm delivery
+ * actually works on their device without waiting for a real reminder.
+ */
+export async function sendTestNotification(): Promise<boolean> {
+  const id = await scheduleOnce(
+    {
+      title: 'Test notification',
+      body: 'This is what your reminders will look like.',
+      data: { kind: 'test' },
+    },
+    new Date(Date.now() + 5000),
+  );
+  return id !== null;
 }
 
 /* -------------------------------------------------------------------------- */

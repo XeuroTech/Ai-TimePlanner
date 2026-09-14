@@ -133,7 +133,9 @@ describe('DailyRoutineScreen', () => {
   it('the Study Hours stepper increments and decrements within 0..12', () => {
     render(<DailyRoutineScreen />);
     const decButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'remove');
-    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add');
+    // Index 0 of the raw "add"-icon list is the header's "add custom item"
+    // button, not a stepper — drop it so index i lines up with stepper row i.
+    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add').slice(1);
     // Study Hours is the first stepper row (Wake/Sleep are clock pickers, not steppers).
     for (let i = 0; i < 10; i++) fireEvent.click(decButtons[0].parentElement!);
     expect(screen.getByText('0 h')).toBeTruthy();
@@ -145,7 +147,9 @@ describe('DailyRoutineScreen', () => {
     render(<DailyRoutineScreen />);
     // Meals is the last stepper row.
     const decButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'remove');
-    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add');
+    // Index 0 of the raw "add"-icon list is the header's "add custom item"
+    // button, not a stepper — drop it so index i lines up with stepper row i.
+    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add').slice(1);
     const mealsDec = decButtons[decButtons.length - 1];
     const mealsInc = incButtons[incButtons.length - 1];
     for (let i = 0; i < 10; i++) fireEvent.click(mealsDec.parentElement!);
@@ -168,7 +172,9 @@ describe('DailyRoutineScreen', () => {
   it('the Work Hours stepper increments and decrements within 0..12', () => {
     render(<DailyRoutineScreen />);
     const decButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'remove');
-    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add');
+    // Index 0 of the raw "add"-icon list is the header's "add custom item"
+    // button, not a stepper — drop it so index i lines up with stepper row i.
+    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add').slice(1);
     // Work Hours is the second stepper row (after Study Hours).
     for (let i = 0; i < 10; i++) fireEvent.click(decButtons[1].parentElement!);
     expect(screen.getByText('0 h')).toBeTruthy();
@@ -179,7 +185,9 @@ describe('DailyRoutineScreen', () => {
   it('the Exercise stepper increments and decrements by 15 within 0..180', () => {
     render(<DailyRoutineScreen />);
     const decButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'remove');
-    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add');
+    // Index 0 of the raw "add"-icon list is the header's "add custom item"
+    // button, not a stepper — drop it so index i lines up with stepper row i.
+    const incButtons = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add').slice(1);
     // Exercise is the third stepper row (after Study Hours, Work Hours).
     for (let i = 0; i < 5; i++) fireEvent.click(decButtons[2].parentElement!);
     expect(screen.getByText('0 min')).toBeTruthy();
@@ -205,14 +213,18 @@ describe('DailyRoutineScreen', () => {
   it('applies the pressed style to a stepper decrement/increment button while held down', async () => {
     render(<DailyRoutineScreen />);
     const decIcon = screen.getAllByTestId('icon').find((el) => el.getAttribute('data-name') === 'remove')!;
-    const incIcon = screen.getAllByTestId('icon').find((el) => el.getAttribute('data-name') === 'add')!;
+    // Index 0 of the raw "add"-icon list is the header's "add custom item"
+    // button (its own pressed style is 0.5, not the stepper's 0.6) — skip it.
+    const incIcon = screen.getAllByTestId('icon').filter((el) => el.getAttribute('data-name') === 'add')[1]!;
     const decBtn = decIcon.parentElement!;
     const incBtn = incIcon.parentElement!;
     fireEvent.mouseDown(decBtn);
-    await waitFor(() => expect(getComputedStyle(decBtn).opacity).toBe('0.5'), { timeout: 3000 });
+    // NumberStepperField's own pressed style is 0.6 (distinct from this
+    // screen's 0.5 convention used elsewhere on the page).
+    await waitFor(() => expect(getComputedStyle(decBtn).opacity).toBe('0.6'), { timeout: 3000 });
     fireEvent.mouseUp(decBtn);
     fireEvent.mouseDown(incBtn);
-    await waitFor(() => expect(getComputedStyle(incBtn).opacity).toBe('0.5'), { timeout: 3000 });
+    await waitFor(() => expect(getComputedStyle(incBtn).opacity).toBe('0.6'), { timeout: 3000 });
     fireEvent.mouseUp(incBtn);
   });
 
@@ -236,6 +248,8 @@ describe('DailyRoutineScreen', () => {
         workHours: 2,
         exerciseMinutes: 30,
         mealsPerDay: 3,
+        customRoutine: [],
+        hiddenRoutineDefaults: [],
       },
     });
   });

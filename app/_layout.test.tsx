@@ -20,7 +20,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native-reanimated', () => ({}));
-vi.mock('@react-navigation/native', () => ({
+// _layout.tsx imports ThemeProvider/DarkTheme/DefaultTheme from
+// 'expo-router/react-navigation' (expo-router's re-export), not directly from
+// '@react-navigation/native' — mocking the latter alone leaves the former's
+// real module graph loaded for real.
+vi.mock('expo-router/react-navigation', () => ({
   ThemeProvider: ({ children, value }: any) => (
     <div data-testid="theme-provider" data-dark={value?.dark}>
       {children}

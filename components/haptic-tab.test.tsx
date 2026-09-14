@@ -8,10 +8,11 @@ vi.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'Light' },
 }));
 
-// @react-navigation/elements' real PlatformPressable pulls in native-only
-// navigation theming; HapticTab only needs a pressable that forwards
-// onPressIn, so a plain button stand-in is enough.
-vi.mock('@react-navigation/elements', () => ({
+// HapticTab imports PlatformPressable from 'expo-router/react-navigation'
+// (expo-router's re-export), not '@react-navigation/elements' directly —
+// mocking the latter alone leaves the former's real module graph (native-only
+// navigation theming) loaded for real, which is what breaks under Vite/jsdom.
+vi.mock('expo-router/react-navigation', () => ({
   PlatformPressable: ({ onPressIn, children, ...rest }: any) => (
     <button onMouseDown={onPressIn} {...rest}>
       {children}

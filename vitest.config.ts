@@ -12,6 +12,14 @@ export default defineConfig({
       'react-native': 'react-native-web',
     },
   },
+  define: {
+    // Metro/Babel inject this global at build time; under Vitest nothing
+    // defines it, and several expo-* packages read it at module scope
+    // (before any test code runs), crashing the whole file with
+    // "ReferenceError: __DEV__ is not defined" before a single test collects.
+    __DEV__: 'true',
+    'process.env.EXPO_OS': JSON.stringify('web'),
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.animation-polyfill.ts', './vitest.setup.ts'],

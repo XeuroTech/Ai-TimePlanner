@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('expo-router', () => ({ useRouter: () => mocks.router }));
+vi.mock('expo-router', () => ({ useRouter: () => mocks.router, useLocalSearchParams: () => ({}) }));
 vi.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 vi.mock('expo-haptics', () => ({ selectionAsync: vi.fn(async () => {}) }));
 vi.mock('@expo/vector-icons', () => ({

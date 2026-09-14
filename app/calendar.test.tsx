@@ -102,11 +102,14 @@ describe('CalendarScreen', () => {
     expect(screen.getByText(currentLabel)).toBeTruthy();
   });
 
-  it('pressing the floating add button does not throw and does not navigate', () => {
+  it('pressing the floating add button navigates to the daily plan for the selected date', () => {
     render(<CalendarScreen />);
     const addIcon = screen.getAllByTestId('icon').find((el) => el.getAttribute('data-name') === 'add')!;
     fireEvent.click(addIcon.parentElement!);
-    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(mocks.router.push).toHaveBeenCalledWith({
+      pathname: '/daily-plan',
+      params: { date: expect.any(String) },
+    });
   });
 
   it('renders without crashing in dark mode (isDark-dependent StatusBar branch)', () => {
