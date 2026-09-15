@@ -1,12 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, initializeAuth } from 'firebase/auth';
-// getReactNativePersistence exists at runtime: Metro resolves `firebase/auth` -> its
-// `browser` field (dist/esm/index.esm.js) which re-exports `@firebase/auth`, and
-// `@firebase/auth` declares `"react-native": "dist/rn/index.js"` — the RN bundle that
-// does export this member. The TYPES always point at the browser build, so TypeScript
-// never sees it. @ts-expect-error suppresses only that gap.
+import { Auth, browserLocalPersistence, getAuth, initializeAuth } from 'firebase/auth';
+import { Platform } from 'react-native';
+// getReactNativePersistence exists at runtime on ios/android: Metro resolves
+// `firebase/auth` there via its `"react-native"` package.json field
+// (dist/rn/index.js), the RN bundle that exports this member. On web, Metro
+// resolves the same import to the browser/ESM build instead (no
+// `"react-native"` field lookup for that platform), which does NOT export
+// it — calling it there throws "getReactNativePersistence is not a
+// function" before any auth call is even attempted. The TYPES always point
+// at the browser build regardless of platform, so TypeScript never sees the
+// native-only member either way. @ts-expect-error suppresses only that gap.
 // @ts-expect-error - see above
 import { getReactNativePersistence } from 'firebase/auth';
 
@@ -139,7 +144,8 @@ export function getFirebaseAuth(): Auth {
   const app = getFirebaseApp();
   try {
     authInstance = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
+      persistence:
+        Platform.OS === 'web' ? browserLocalPersistence : getReactNativePersistence(AsyncStorage),
     });
   } catch (e) {
     // Fast Refresh / double-init: reuse the already-created instance.

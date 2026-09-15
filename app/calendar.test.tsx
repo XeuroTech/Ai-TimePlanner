@@ -66,11 +66,14 @@ describe('CalendarScreen', () => {
   it('selecting a different day updates the events header and hides the Today badge', () => {
     render(<CalendarScreen />);
     // Day 15 is always unique across the 42-cell grid (the only out-of-month
-    // overflow cells sit right at the start/end of the visible range).
-    fireEvent.click(screen.getByText('15'));
-    expect(screen.queryByText('Today')).toBeNull();
+    // overflow cells sit right at the start/end of the visible range) —
+    // except when today itself is the 15th, in which case it wouldn't be "a
+    // different day" at all, so fall back to the also-always-unique 16th.
     const now = new Date();
-    const label = new Date(now.getFullYear(), now.getMonth(), 15).toLocaleDateString('en-US', {
+    const day = now.getDate() === 15 ? 16 : 15;
+    fireEvent.click(screen.getByText(String(day)));
+    expect(screen.queryByText('Today')).toBeNull();
+    const label = new Date(now.getFullYear(), now.getMonth(), day).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'long',
     });
