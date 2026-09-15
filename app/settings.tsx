@@ -34,7 +34,7 @@ export default function SettingsScreen() {
       items: [
         { id: 'account', label: 'Account', icon: 'person-circle-outline', colorKey: 'primary', tintKey: 'primary', value: profile?.name ?? 'Guest' },
         { id: 'plan', label: 'Subscription', icon: 'diamond-outline', colorKey: 'primary', tintKey: 'primary', value: isPremium ? 'Premium' : 'Free' },
-        { id: 'language', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: languageLabel(profile?.preferences.language) },
+        { id: 'language', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: languageLabel(profile?.preferences?.language) },
       ],
     },
     {

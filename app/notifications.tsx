@@ -6,8 +6,10 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui/empty-state';
+import { useToast } from '@/components/ui/toast';
 import { AppPalette, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { getNotificationDiagnostics, sendTestNotification } from '@/lib/services/notifications';
 import { type InboxItem, useMyNotifications, useNotificationStore } from '@/store/notification-store';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -44,6 +46,7 @@ function timeLabel(at: number, group: Group): string {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
 
@@ -54,6 +57,34 @@ export default function NotificationsScreen() {
   const clear = useNotificationStore((s) => s.clear);
 
   const unread = items.filter((n) => !n.read).length;
+
+  /**
+   * Sends a real one-off notification so the user can confirm delivery
+   * works. On failure, checks current permission to explain *why* rather
+   * than showing a generic error.
+   */
+  const onSendTest = async () => {
+    try {
+      const ok = await sendTestNotification();
+      if (ok) {
+        toast.success('Test notification scheduled — it will arrive in about 5 seconds.');
+        return;
+      }
+      const diag = await getNotificationDiagnostics();
+      if (diag.permission === 'granted') {
+        toast.show(
+          'Permission is granted but the reminder could not be scheduled. Try again in a moment.',
+          'error',
+        );
+      } else if (diag.permission === 'denied' && !diag.canAskAgain) {
+        toast.show('Notifications are blocked. Enable them in system settings.', 'error');
+      } else {
+        toast.show('Notification permission is not granted yet.', 'error');
+      }
+    } catch {
+      toast.show('Could not schedule the test reminder.', 'error');
+    }
+  };
 
   const onClearAll = () => {
     if (items.length === 0) return;
@@ -104,6 +135,21 @@ export default function NotificationsScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          <Pressable
+            onPress={() => void onSendTest()}
+            android_ripple={{ color: 'rgba(108,77,255,0.06)' }}
+            style={({ pressed }) => [styles.card, styles.testCard, pressed && styles.cardPressed]}>
+            <View style={[styles.icon, { backgroundColor: Tint.primary }]}>
+              <Ionicons name="paper-plane-outline" size={20} color={Palette.primary} />
+            </View>
+            <View style={styles.body}>
+              <Text style={styles.title}>Send a test notification</Text>
+              <Text style={styles.message} numberOfLines={2}>
+                See what a reminder looks like on this device.
+              </Text>
+            </View>
+          </Pressable>
+
           {items.length === 0 ? (
             <EmptyState
               icon="notifications-off-outline"
@@ -221,6 +267,7 @@ function createStyles(Palette: AppPalette) {
     ...CARD_SHADOW,
   },
   cardUnread: { backgroundColor: '#FBFAFF', borderWidth: 1, borderColor: '#EAE6FB' },
+  testCard: { marginTop: 4 },
   cardPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   icon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   body: { flex: 1 },

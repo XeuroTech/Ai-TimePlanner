@@ -26,6 +26,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import {
   getNotificationDiagnostics,
   requestNotificationPermission,
+  sendTestNotification,
   type PermissionState,
 } from '@/lib/services/notifications';
 import { reminderOffsetMinutes, syncReminders, type SyncResult } from '@/lib/services/reminders';
@@ -138,6 +139,19 @@ export default function RemindersScreen() {
       }
     }
     await refresh();
+  };
+
+  const onSendTest = async () => {
+    try {
+      const ok = await sendTestNotification();
+      if (ok) {
+        toast.success('Test reminder scheduled — arriving in about 5 seconds.');
+      } else {
+        toast.show('Could not schedule the test reminder.', 'error');
+      }
+    } catch {
+      toast.show('Could not schedule the test reminder.', 'error');
+    }
   };
 
   const totalScheduled = summary
@@ -318,6 +332,14 @@ export default function RemindersScreen() {
             </View>
           )}
 
+          {/* Test notification — proves delivery works without waiting for a real reminder. */}
+          <Pressable
+            onPress={() => void onSendTest()}
+            style={({ pressed }) => [styles.testButton, pressed && styles.pressed]}>
+            <Ionicons name="paper-plane-outline" size={18} color={Palette.primary} />
+            <Text style={styles.testButtonText}>Send a test notification</Text>
+          </Pressable>
+
           {/* Engine readout — proves the schedule was rebuilt. */}
           {summary ? (
             <Text style={styles.footnote}>
@@ -379,6 +401,17 @@ function createStyles(Palette: AppPalette, Tint: AppTint) {
       marginBottom: 16,
     },
     warningText: { flex: 1, fontFamily: FontFamily, fontSize: 13, fontWeight: '600', color: '#B4272B', lineHeight: 18 },
+
+    testButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: Tint.primary,
+      borderRadius: 16,
+      padding: 14,
+      marginTop: 22,
+    },
+    testButtonText: { flex: 1, fontFamily: FontFamily, fontSize: 14, fontWeight: '700', color: Palette.primary },
 
     sectionLabel: {
       fontFamily: FontFamily,
