@@ -17,6 +17,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GestureResponderEvent,
   Modal,
@@ -90,6 +91,7 @@ export function ClockDial({
   minuteStep?: number;
   size?: number;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
@@ -195,7 +197,7 @@ export function ClockDial({
       </View>
 
       <Text style={styles.hint}>
-        {mode === 'hour' ? 'Drag or tap to pick the hour' : 'Drag or tap to pick the minutes'}
+        {mode === 'hour' ? t('clockPicker.hintHour') : t('clockPicker.hintMinute')}
       </Text>
 
       {/* The dial */}
@@ -289,9 +291,9 @@ export function ClockDial({
 export function ClockTimePickerModal({
   visible,
   value,
-  title = 'Select time',
+  title,
   minuteStep = 1,
-  confirmLabel = 'OK',
+  confirmLabel,
   onCancel,
   onConfirm,
 }: {
@@ -337,12 +339,13 @@ function ClockSheet({
   onConfirm,
 }: {
   initial: number;
-  title: string;
+  title?: string;
   minuteStep: number;
-  confirmLabel: string;
+  confirmLabel?: string;
   onCancel: () => void;
   onConfirm: (minutes: number) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
@@ -354,7 +357,7 @@ function ClockSheet({
       {/* Inner pressable swallows taps so they don't dismiss the sheet. */}
       <Pressable style={styles.sheet} onPress={() => {}}>
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>{title}</Text>
+          <Text style={styles.sheetTitle}>{title ?? t('clockPicker.selectTime')}</Text>
           <Pressable
             hitSlop={8}
             onPress={() => {
@@ -363,7 +366,7 @@ function ClockSheet({
             }}
             style={({ pressed }) => [styles.nowBtn, pressed && styles.pressed]}>
             <Ionicons name="time-outline" size={14} color={Palette.primary} />
-            <Text style={styles.nowText}>Now</Text>
+            <Text style={styles.nowText}>{t('clockPicker.now')}</Text>
           </Pressable>
         </View>
 
@@ -379,13 +382,13 @@ function ClockSheet({
           <Pressable
             onPress={onCancel}
             style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
-            <Text style={styles.ghostText}>Cancel</Text>
+            <Text style={styles.ghostText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => onConfirm(draft)}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.primaryPressed]}>
-            <Text style={styles.primaryText}>{confirmLabel}</Text>
+            <Text style={styles.primaryText}>{confirmLabel ?? t('clockPicker.ok')}</Text>
           </Pressable>
         </View>
       </Pressable>
@@ -428,6 +431,7 @@ export function ClockTimeField({
   /** When set, shows the duration from this value to `value` under the field. */
   compareTo?: number;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [open, setOpen] = useState(false);
@@ -466,7 +470,7 @@ export function ClockTimeField({
       <ClockTimePickerModal
         visible={open}
         value={value}
-        title={title ?? label ?? 'Select time'}
+        title={title ?? label ?? t('clockPicker.selectTime')}
         minuteStep={minuteStep}
         onCancel={() => setOpen(false)}
         onConfirm={(v) => {

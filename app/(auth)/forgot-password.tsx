@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const forgotPassword = useAuthStore((s) => s.forgotPassword);
   const { Palette, Tint, isDark } = useAppTheme();
@@ -43,7 +45,7 @@ export default function ForgotPasswordScreen() {
     if (res.ok) {
       setCooldown(res.cooldownSeconds);
       setSent(true);
-      toast.success('Reset link sent — check your inbox and spam folder.');
+      toast.success(t('auth.forgotPassword.sentToast'));
     } else {
       if (res.retryInSeconds) setCooldown(res.retryInSeconds);
       toast.error(res.error);
@@ -51,7 +53,10 @@ export default function ForgotPasswordScreen() {
   };
 
   const resendDisabled = loading || cooldown > 0;
-  const resendLabel = cooldown > 0 ? `Resend email in ${cooldown}s` : 'Resend email';
+  const resendLabel =
+    cooldown > 0
+      ? t('auth.forgotPassword.resendLabelCountdown', { seconds: cooldown })
+      : t('auth.forgotPassword.resendLabel');
 
   return (
     <View style={styles.root}>
@@ -67,7 +72,7 @@ export default function ForgotPasswordScreen() {
                 <View style={[styles.badge, { backgroundColor: '#E4F9EA' }]}>
                   <Ionicons name="mail-open-outline" size={38} color={Palette.green} />
                 </View>
-                <Text style={styles.title}>Check your inbox</Text>
+                <Text style={styles.title}>{t('auth.forgotPassword.checkInboxTitle')}</Text>
                 {/*
                   Deliberately "if an account exists": with Firebase's email
                   enumeration protection on (the default), the backend returns
@@ -76,11 +81,10 @@ export default function ForgotPasswordScreen() {
                   the user who is confused about why none arrived.
                 */}
                 <Text style={styles.subtitle}>
-                  If an account exists for {email}, a password reset link is on its way. Open it to set a new
-                  password, then log in. Check spam if you don&apos;t see it.
+                  {t('auth.forgotPassword.checkInboxSubtitle', { email })}
                 </Text>
                 <View style={styles.form}>
-                  <Button title="Back to Login" onPress={() => router.replace('/login')} />
+                  <Button title={t('auth.forgotPassword.backToLogin')} onPress={() => router.replace('/login')} />
                   <Pressable hitSlop={8} onPress={submit} disabled={resendDisabled} style={styles.resend}>
                     <Text style={[styles.resendText, resendDisabled && styles.resendTextDisabled]}>
                       {resendLabel}
@@ -93,13 +97,13 @@ export default function ForgotPasswordScreen() {
                 <View style={styles.badge}>
                   <Ionicons name="lock-closed-outline" size={38} color={Palette.primary} />
                 </View>
-                <Text style={styles.title}>Forgot password?</Text>
-                <Text style={styles.subtitle}>Enter your email and we&apos;ll send you a reset link.</Text>
+                <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
+                <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
                 <View style={styles.form}>
-                  <TextField label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" icon="mail-outline" keyboardType="email-address" error={error} onSubmitEditing={submit} />
-                  <Button title="Send Reset Link" onPress={submit} loading={loading} />
+                  <TextField label={t('common.email')} value={email} onChangeText={setEmail} placeholder={t('common.emailPlaceholder')} icon="mail-outline" keyboardType="email-address" error={error} onSubmitEditing={submit} />
+                  <Button title={t('auth.forgotPassword.sendResetLink')} onPress={submit} loading={loading} />
                   <Pressable hitSlop={8} onPress={() => router.replace('/login')} style={styles.resend}>
-                    <Text style={styles.resendText}>Back to login</Text>
+                    <Text style={styles.resendText}>{t('auth.forgotPassword.backToLoginLink')}</Text>
                   </Pressable>
                 </View>
               </>

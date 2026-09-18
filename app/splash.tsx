@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AppPalette, FontFamily } from '@/constants/palette';
 import { useAppTheme } from '@/hooks/use-app-theme';
@@ -31,6 +32,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -173,9 +175,9 @@ export default function SplashScreen() {
               <View style={styles.logoMark}>
                 <Ionicons name="calendar-clear" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.logo}>Smart Planner</Text>
+              <Text style={styles.logo}>{t('splash.logo')}</Text>
             </View>
-            <Text style={styles.subtitle}>Plan your day.{'\n'}Organize your life.</Text>
+            <Text style={styles.subtitle}>{t('splash.subtitle')}</Text>
           </View>
 
           {/* Actions */}
@@ -184,14 +186,14 @@ export default function SplashScreen() {
               onPress={goToOnboarding}
               android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
               style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}>
-              <Text style={styles.ctaText}>Get Started</Text>
+              <Text style={styles.ctaText}>{t('common.getStarted')}</Text>
             </Pressable>
 
             <Pressable
               onPress={goToLogin}
               hitSlop={12}
               style={({ pressed }) => [styles.linkWrap, pressed && styles.linkPressed]}>
-              <Text style={styles.linkText}>I already have an account</Text>
+              <Text style={styles.linkText}>{t('splash.haveAccount')}</Text>
             </Pressable>
           </View>
         </Animated.View>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -56,6 +57,7 @@ function makeRoutineId(): string {
 
 export default function DailyRoutineScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
 
   const { Palette, Tint, isDark } = useAppTheme();
@@ -129,7 +131,7 @@ export default function DailyRoutineScreen() {
       },
     });
     setSaving(false);
-    toast.success('Routine saved.');
+    toast.success(t('dailyRoutine.savedToast'));
     router.back();
   };
 
@@ -145,7 +147,7 @@ export default function DailyRoutineScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Daily Routine</Text>
+          <Text style={styles.headerTitle}>{t('dailyRoutine.title')}</Text>
           <Pressable
             hitSlop={10}
             onPress={() => setShowAdd(true)}
@@ -172,9 +174,9 @@ export default function DailyRoutineScreen() {
             </View>
           </View>
 
-          <Text style={styles.title}>Set your daily routine</Text>
+          <Text style={styles.title}>{t('dailyRoutine.heroTitle')}</Text>
           <Text style={styles.subtitle}>
-            This helps the AI build a schedule that fits your natural rhythm.
+            {t('dailyRoutine.heroSubtitle')}
           </Text>
 
           {/* Wake / Sleep — real circular clock pickers */}
@@ -182,7 +184,7 @@ export default function DailyRoutineScreen() {
             icon="sunny-outline"
             color={Palette.orange}
             tint={Tint.orange}
-            label="Wake Up Time"
+            label={t('dailyRoutine.wakeUpTimeLabel')}
             value={wake}
             onChange={setWake}
           />
@@ -190,7 +192,7 @@ export default function DailyRoutineScreen() {
             icon="moon-outline"
             color={Palette.blue}
             tint={Tint.blue}
-            label="Sleep Time"
+            label={t('dailyRoutine.sleepTimeLabel')}
             value={sleep}
             onChange={setSleep}
           />
@@ -202,7 +204,7 @@ export default function DailyRoutineScreen() {
               icon="book-outline"
               color={Palette.primary}
               tint={Tint.primary}
-              label="Study Hours"
+              label={t('dailyRoutine.studyHoursLabel')}
               value={studyHours}
               onChange={setStudyHours}
               min={0}
@@ -216,7 +218,7 @@ export default function DailyRoutineScreen() {
               icon="briefcase-outline"
               color={Palette.secondary}
               tint={Tint.primary}
-              label="Work Hours"
+              label={t('dailyRoutine.workHoursLabel')}
               value={workHours}
               onChange={setWorkHours}
               min={0}
@@ -230,7 +232,7 @@ export default function DailyRoutineScreen() {
               icon="barbell-outline"
               color={Palette.pink}
               tint={Tint.pink}
-              label="Exercise"
+              label={t('dailyRoutine.exerciseLabel')}
               value={exercise}
               onChange={setExercise}
               min={0}
@@ -245,7 +247,7 @@ export default function DailyRoutineScreen() {
               icon="restaurant-outline"
               color={Palette.green}
               tint={Tint.green}
-              label="Meals"
+              label={t('dailyRoutine.mealsLabel')}
               value={meals}
               onChange={setMeals}
               min={1}
@@ -285,8 +287,8 @@ export default function DailyRoutineScreen() {
             />
             <Text style={styles.balanceText}>
               {freeMinutes < 0
-                ? `Over-booked by ${formatMinutesTotal(-freeMinutes)} — your day is only ${formatMinutesTotal(awakeMinutes)} long.`
-                : `${formatMinutesTotal(freeMinutes)} free out of ${formatMinutesTotal(awakeMinutes)} awake.`}
+                ? t('dailyRoutine.overBooked', { over: formatMinutesTotal(-freeMinutes), total: formatMinutesTotal(awakeMinutes) })
+                : t('dailyRoutine.freeOutOf', { free: formatMinutesTotal(freeMinutes), total: formatMinutesTotal(awakeMinutes) })}
             </Text>
           </View>
         </ScrollView>
@@ -301,7 +303,7 @@ export default function DailyRoutineScreen() {
               styles.continueBtn,
               (pressed || saving) && styles.continuePressed,
             ]}>
-            <Text style={styles.continueText}>{saving ? 'Saving…' : 'Continue'}</Text>
+            <Text style={styles.continueText}>{saving ? t('dailyRoutine.saving') : t('common.continue')}</Text>
           </Pressable>
         </View>
 
@@ -454,6 +456,7 @@ function AddItemSheet({
   onClose: () => void;
   onAdd: (item: { label: string; icon: IoniconName; minutes: number }) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [label, setLabel] = useState('');
@@ -485,26 +488,26 @@ function AddItemSheet({
           <View style={styles.sheet}>
             <View style={styles.sheetGrabber} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Add to your routine</Text>
+              <Text style={styles.sheetTitle}>{t('dailyRoutine.addSheetTitle')}</Text>
               <Pressable hitSlop={10} onPress={close}>
                 <Ionicons name="close" size={22} color={Palette.muted} />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={styles.fieldLabel}>{t('common.name')}</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   value={label}
                   onChangeText={setLabel}
-                  placeholder="e.g. Commute, Gaming, Family time"
+                  placeholder={t('dailyRoutine.namePlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                   returnKeyType="done"
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>Icon</Text>
+              <Text style={styles.fieldLabel}>{t('dailyRoutine.iconLabel')}</Text>
               <View style={styles.iconGrid}>
                 {ADD_ICON_CHOICES.map((ic) => {
                   const active = ic === icon;
@@ -520,8 +523,8 @@ function AddItemSheet({
               </View>
 
               <View style={styles.durationRow}>
-                <Text style={styles.stepperLabel}>Duration</Text>
-                <NumberStepperField value={minutes} onChange={setMinutes} min={0} max={720} step={5} unit="min" title="Duration" />
+                <Text style={styles.stepperLabel}>{t('dailyRoutine.durationLabel')}</Text>
+                <NumberStepperField value={minutes} onChange={setMinutes} min={0} max={720} step={5} unit="min" title={t('dailyRoutine.durationLabel')} />
               </View>
             </ScrollView>
 
@@ -535,7 +538,7 @@ function AddItemSheet({
                 !label.trim() && styles.sheetSaveDisabled,
                 pressed && !!label.trim() && styles.continuePressed,
               ]}>
-              <Text style={styles.continueText}>Add item</Text>
+              <Text style={styles.continueText}>{t('dailyRoutine.addItemButton')}</Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>

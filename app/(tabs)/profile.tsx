@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -56,19 +57,25 @@ type Row =
     }
   | { id: ToggleId; kind: 'toggle'; label: string; icon: IoniconName; colorKey: string; tintKey: string };
 
-const PREFERENCES: Row[] = [
-  { id: 'routine', kind: 'nav', label: 'Daily Routine', icon: 'alarm-outline', colorKey: 'primary', tintKey: 'primary', route: '/daily-routine' },
-  { id: 'habits', kind: 'nav', label: 'Habit Tracker', icon: 'flame-outline', colorKey: 'pink', tintKey: 'pink', route: '/habits' },
-  { id: 'notifications', kind: 'toggle', label: 'Notifications', icon: 'notifications-outline', colorKey: 'orange', tintKey: 'orange' },
-  { id: 'darkMode', kind: 'toggle', label: 'Dark Mode', icon: 'moon-outline', colorKey: 'secondary', tintKey: 'primary' },
-  { id: 'language', kind: 'nav', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', route: '/language' },
-];
+type TFn = ReturnType<typeof useTranslation>['t'];
 
-const GENERAL: Row[] = [
-  { id: 'backup', kind: 'nav', label: 'Backup & Sync', icon: 'cloud-outline', colorKey: 'blue', tintKey: 'blue', route: '/backup' },
-  { id: 'help', kind: 'nav', label: 'Help & Support', icon: 'help-circle-outline', colorKey: 'pink', tintKey: 'pink', value: SUPPORT_EMAIL },
-  { id: 'settings', kind: 'nav', label: 'Settings', icon: 'settings-outline', colorKey: 'muted', tintKey: 'neutral', route: '/settings' },
-];
+function getPreferences(t: TFn): Row[] {
+  return [
+    { id: 'routine', kind: 'nav', label: t('tabs.profile.preferences.dailyRoutine'), icon: 'alarm-outline', colorKey: 'primary', tintKey: 'primary', route: '/daily-routine' },
+    { id: 'habits', kind: 'nav', label: t('tabs.profile.preferences.habitTracker'), icon: 'flame-outline', colorKey: 'pink', tintKey: 'pink', route: '/habits' },
+    { id: 'notifications', kind: 'toggle', label: t('tabs.profile.preferences.notifications'), icon: 'notifications-outline', colorKey: 'orange', tintKey: 'orange' },
+    { id: 'darkMode', kind: 'toggle', label: t('tabs.profile.preferences.darkMode'), icon: 'moon-outline', colorKey: 'secondary', tintKey: 'primary' },
+    { id: 'language', kind: 'nav', label: t('tabs.profile.preferences.language'), icon: 'language-outline', colorKey: 'green', tintKey: 'green', route: '/language' },
+  ];
+}
+
+function getGeneral(t: TFn): Row[] {
+  return [
+    { id: 'backup', kind: 'nav', label: t('tabs.profile.general.backupAndSync'), icon: 'cloud-outline', colorKey: 'blue', tintKey: 'blue', route: '/backup' },
+    { id: 'help', kind: 'nav', label: t('tabs.profile.general.helpAndSupport'), icon: 'help-circle-outline', colorKey: 'pink', tintKey: 'pink', value: SUPPORT_EMAIL },
+    { id: 'settings', kind: 'nav', label: t('tabs.profile.general.settings'), icon: 'settings-outline', colorKey: 'muted', tintKey: 'neutral', route: '/settings' },
+  ];
+}
 
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
@@ -77,6 +84,7 @@ const GENERAL: Row[] = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const tabBarSpace = 60 + (insets.bottom > 0 ? insets.bottom : 12);
 
@@ -92,7 +100,7 @@ export default function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const updateProfile = useAuthStore((s) => s.updateProfile);
-  const name = profile?.name ?? 'Guest';
+  const name = profile?.name ?? t('tabs.profile.guestFallback');
   const email = fbUser?.email ?? '';
   const category = getCategory(profile?.category);
   const avatarUri = profile?.preferences?.avatarUri;
@@ -110,12 +118,12 @@ export default function ProfileScreen() {
    */
   const preferences = useMemo<Row[]>(
     () =>
-      PREFERENCES.map((row) =>
+      getPreferences(t).map((row) =>
         row.id === 'language' && row.kind === 'nav'
           ? { ...row, value: languageLabel(profile?.preferences.language) }
           : row,
       ),
-    [profile?.preferences.language],
+    [t, profile?.preferences.language],
   );
 
   const driveConnected = useBackupStore((s) => s.connected);
@@ -123,12 +131,19 @@ export default function ProfileScreen() {
   const hydrateBackup = useBackupStore((s) => s.hydrate);
   const general = useMemo<Row[]>(
     () =>
-      GENERAL.map((row) =>
+      getGeneral(t).map((row) =>
         row.id === 'backup' && row.kind === 'nav'
-          ? { ...row, value: driveConnected ? (lastBackupAt ? 'Synced' : 'Connected') : 'Off' }
+          ? {
+              ...row,
+              value: driveConnected
+                ? lastBackupAt
+                  ? t('tabs.profile.backupSynced')
+                  : t('tabs.profile.backupConnected')
+                : t('tabs.profile.backupOff'),
+            }
           : row,
       ),
-    [driveConnected, lastBackupAt],
+    [t, driveConnected, lastBackupAt],
   );
 
   // `connected` is derived from the stored OAuth token, not persisted state, so
@@ -159,7 +174,7 @@ export default function ProfileScreen() {
       const res = await pickAvatar(uid, avatarUri);
       if (res.ok) {
         await updateProfile({ preferences: { avatarUri: res.uri } });
-        toast.success('Profile picture updated.');
+        toast.success(t('tabs.profile.avatarUpdatedToast'));
       } else if (!res.canceled) {
         toast.show(res.error, 'error');
       }
@@ -184,10 +199,10 @@ export default function ProfileScreen() {
     try {
       await updateProfile({ name: trimmed });
       setShowNameEdit(false);
-      toast.success('Name updated.');
+      toast.success(t('tabs.profile.nameUpdatedToast'));
     } catch (e) {
       reportError(e, 'profile/rename');
-      toast.show('Could not update your name. Please try again.', 'error');
+      toast.show(t('tabs.profile.nameUpdateFailedToast'), 'error');
     } finally {
       setNameSaving(false);
     }
@@ -203,15 +218,15 @@ export default function ProfileScreen() {
       setNotificationsEnabled(true);
     } else {
       setNotificationsEnabled(false);
-      toast.show('Notifications permission denied. Enable it from system settings to turn this on.', 'error');
+      toast.show(t('tabs.profile.notificationsDeniedToast'), 'error');
     }
   };
 
   const onLogout = () => {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('tabs.profile.logoutTitle'), t('tabs.profile.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Log out',
+        text: t('tabs.profile.logoutTitle'),
         style: 'destructive',
         onPress: async () => {
           // Just clear the session; the auth gate in app/_layout.tsx
@@ -225,17 +240,17 @@ export default function ProfileScreen() {
 
   const onDeleteAccount = () => {
     Alert.alert(
-      'Delete account',
-      'This permanently deletes your account and all local data. This cannot be undone.',
+      t('tabs.profile.deleteAccountTitle'),
+      t('tabs.profile.deleteAccountMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             // On success the auth gate handles the redirect to /login.
             const res = await deleteAccount();
-            if (!res.ok) Alert.alert('Could not delete account', res.error ?? 'Please try again.');
+            if (!res.ok) Alert.alert(t('tabs.profile.deleteAccountFailedTitle'), res.error ?? t('tabs.profile.deleteAccountFailedFallback'));
           },
         },
       ],
@@ -326,7 +341,7 @@ export default function ProfileScreen() {
             {isPremium ? (
               <View style={styles.proBadge}>
                 <Ionicons name="diamond" size={10} color={Palette.primary} />
-                <Text style={styles.proBadgeText}>PRO</Text>
+                <Text style={styles.proBadgeText}>{t('tabs.profile.proBadge')}</Text>
               </View>
             ) : null}
           </Pressable>
@@ -349,11 +364,11 @@ export default function ProfileScreen() {
             <Ionicons name="diamond" size={20} color="#FFFFFF" />
           </View>
           <View style={styles.premiumText}>
-            <Text style={styles.premiumTitle}>{isPremium ? 'Premium Member' : 'Upgrade to Premium'}</Text>
+            <Text style={styles.premiumTitle}>{isPremium ? t('tabs.profile.premiumMember') : t('tabs.profile.upgradeToPremium')}</Text>
             <Text style={styles.premiumSub}>
               {isPremium
-                ? 'All features unlocked · tap to manage your plan'
-                : 'Unlimited AI schedules, analytics & backup'}
+                ? t('tabs.profile.premiumSubActive')
+                : t('tabs.profile.premiumSubInactive')}
             </Text>
           </View>
           {isPremium ? (
@@ -364,11 +379,11 @@ export default function ProfileScreen() {
         </Pressable>
 
         {/* Preferences */}
-        <Text style={styles.sectionLabel}>Preferences</Text>
+        <Text style={styles.sectionLabel}>{t('tabs.profile.preferencesSection')}</Text>
         <View style={styles.card}>{preferences.map((r, i) => renderRow(r, i === preferences.length - 1))}</View>
 
         {/* General */}
-        <Text style={styles.sectionLabel}>General</Text>
+        <Text style={styles.sectionLabel}>{t('tabs.profile.generalSection')}</Text>
         <View style={styles.card}>{general.map((r, i) => renderRow(r, i === general.length - 1))}</View>
 
         {/* Logout */}
@@ -377,14 +392,14 @@ export default function ProfileScreen() {
           android_ripple={{ color: 'rgba(229,72,77,0.1)' }}
           style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}>
           <Ionicons name="log-out-outline" size={20} color="#E5484D" />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('tabs.profile.logoutButton')}</Text>
         </Pressable>
 
         <Pressable onPress={onDeleteAccount} hitSlop={8} style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}>
-          <Text style={styles.deleteText}>Delete Account</Text>
+          <Text style={styles.deleteText}>{t('tabs.profile.deleteAccountButton')}</Text>
         </Pressable>
 
-        <Text style={styles.version}>Smart Planner · v1.0.0</Text>
+        <Text style={styles.version}>{t('tabs.profile.version')}</Text>
       </ScrollView>
 
       {/* Category / persona picker */}
@@ -396,7 +411,7 @@ export default function ProfileScreen() {
         <Pressable style={styles.sheetBackdrop} onPress={() => setShowCatPicker(false)} />
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Choose your category</Text>
+          <Text style={styles.sheetTitle}>{t('tabs.profile.chooseCategoryTitle')}</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
             {CATEGORIES.map((c) => {
               const active = c.id === profile?.category;
@@ -436,24 +451,24 @@ export default function ProfileScreen() {
         </Pressable>
         <View pointerEvents="box-none" style={styles.dialogWrap}>
           <View style={styles.dialogCard}>
-            <Text style={styles.sheetTitle}>Edit name</Text>
+            <Text style={styles.sheetTitle}>{t('tabs.profile.editNameTitle')}</Text>
             <TextField
               value={nameDraft}
               onChangeText={setNameDraft}
-              placeholder="Your name"
+              placeholder={t('tabs.profile.namePlaceholder')}
               autoCapitalize="words"
               autoFocus
               onSubmitEditing={onSaveName}
             />
             <View style={styles.dialogActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="secondary"
                 onPress={() => setShowNameEdit(false)}
                 style={styles.dialogBtn}
               />
               <Button
-                title="Save"
+                title={t('common.save')}
                 onPress={onSaveName}
                 loading={nameSaving}
                 disabled={!nameDraft.trim()}

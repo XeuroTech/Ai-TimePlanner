@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Modal,
@@ -101,6 +102,7 @@ function formatRange(days: Date[]): string {
 export default function TimetableScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -151,7 +153,7 @@ export default function TimetableScreen() {
       <View style={{ paddingTop: insets.top + 8 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Timetable</Text>
+          <Text style={styles.title}>{t('tabs.timetable.title')}</Text>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => router.push('/calendar')}
@@ -268,8 +270,8 @@ export default function TimetableScreen() {
               <EmptyState
                 compact
                 icon="calendar-outline"
-                title="Nothing scheduled yet"
-                message="Tap + to add your first entry to the timetable."
+                title={t('tabs.timetable.emptyTitle')}
+                message={t('tabs.timetable.emptyMessage')}
                 ctaLabel={cfg.title}
                 onPress={() => router.push('/add-class')}
               />
@@ -287,10 +289,10 @@ export default function TimetableScreen() {
           router.push({ pathname: '/add-class', params: { classId: item.id } });
         }}
         onDelete={(item) => {
-          Alert.alert('Delete class', `Delete "${item.subject}"? This can't be undone.`, [
-            { text: 'Cancel', style: 'cancel' },
+          Alert.alert(t('tabs.timetable.deleteClassTitle'), t('tabs.timetable.deleteClassMessage', { subject: item.subject }), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Delete',
+              text: t('common.delete'),
               style: 'destructive',
               onPress: () => {
                 setSelectedId(null);
@@ -347,6 +349,7 @@ function ClassDetailDialog({
   onEdit: (item: PlanClass) => void;
   onDelete: (item: PlanClass) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const cfg = getAddEntryConfig(useProfile()?.category);
@@ -375,18 +378,18 @@ function ClassDetailDialog({
           </View>
 
           <View style={styles.detailCard}>
-            <DetailRow icon="calendar-outline" label="Day" value={DAY_LABELS[item.day] ?? '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon="calendar-outline" label={t('tabs.timetable.dayLabel')} value={DAY_LABELS[item.day] ?? '—'} styles={styles} Palette={Palette} />
             <DetailRow
               icon="time-outline"
-              label="Time"
+              label={t('tabs.timetable.timeLabel')}
               value={`${formatTime(item.start)} – ${formatTime(item.end)}`}
               styles={styles}
               Palette={Palette}
             />
             <DetailRow icon={cfg.person.icon} label={cfg.person.label} value={item.teacher || '—'} styles={styles} Palette={Palette} />
             <DetailRow icon={cfg.place.icon} label={cfg.place.label} value={item.room || '—'} styles={styles} Palette={Palette} />
-            <DetailRow icon="notifications-outline" label="Reminder" value={item.reminder || '—'} styles={styles} Palette={Palette} />
-            <DetailRow icon="repeat-outline" label="Repeat" value={item.repeat || '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon="notifications-outline" label={t('tabs.timetable.reminderLabel')} value={item.reminder || '—'} styles={styles} Palette={Palette} />
+            <DetailRow icon="repeat-outline" label={t('tabs.timetable.repeatLabel')} value={item.repeat || '—'} styles={styles} Palette={Palette} />
           </View>
 
           <View style={styles.dialogActions}>
@@ -398,7 +401,7 @@ function ClassDetailDialog({
               android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
               style={({ pressed }) => [styles.editBtn, pressed && styles.editPressed]}>
               <Ionicons name="create-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.editText}>Edit</Text>
+              <Text style={styles.editText}>{t('common.edit')}</Text>
             </Pressable>
           </View>
         </View>

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +20,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomPad = insets.bottom > 0 ? insets.bottom : 12;
   const { Palette } = useAppTheme();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -54,35 +56,35 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('tabs.layout.home'),
           tabBarIcon: tabIcon('home-outline', 'home'),
         }}
       />
       <Tabs.Screen
         name="timetable"
         options={{
-          title: 'Timetable',
+          title: t('tabs.layout.timetable'),
           tabBarIcon: tabIcon('calendar-outline', 'calendar'),
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
-          title: 'Tasks',
+          title: t('tabs.layout.tasks'),
           tabBarIcon: tabIcon('checkbox-outline', 'checkbox'),
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
-          title: 'Analytics',
+          title: t('tabs.layout.analytics'),
           tabBarIcon: tabIcon('stats-chart-outline', 'stats-chart'),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.layout.profile'),
           tabBarIcon: tabIcon('person-outline', 'person'),
         }}
       />

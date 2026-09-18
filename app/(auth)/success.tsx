@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +12,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 
 export default function SuccessScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const scale = useRef(new Animated.Value(0.4)).current;
@@ -32,14 +34,12 @@ export default function SuccessScreen() {
             <Ionicons name="checkmark" size={60} color="#FFFFFF" />
           </Animated.View>
           <Animated.View style={{ opacity, alignItems: 'center' }}>
-            <Text style={styles.title}>You&apos;re all set!</Text>
-            <Text style={styles.subtitle}>
-              Your account is ready. Let&apos;s personalize your planner in a few quick steps.
-            </Text>
+            <Text style={styles.title}>{t('auth.success.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.success.subtitle')}</Text>
           </Animated.View>
         </View>
         <View style={styles.footer}>
-          <Button title="Continue" icon="arrow-forward" onPress={() => router.replace('/category')} />
+          <Button title={t('auth.success.continueButton')} icon="arrow-forward" onPress={() => router.replace('/category')} />
         </View>
       </SafeAreaView>
     </View>

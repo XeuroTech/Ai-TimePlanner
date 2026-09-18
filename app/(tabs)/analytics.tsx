@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +17,7 @@ import { formatMinutesTotal, formatPercent, WEEKDAY_SHORT } from '@/lib/analytic
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const tabBarSpace = 60 + (insets.bottom > 0 ? insets.bottom : 12);
@@ -47,8 +49,8 @@ export default function AnalyticsScreen() {
       <View style={{ paddingTop: insets.top + 12 }}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Analytics</Text>
-            <Text style={styles.subtitle}>Track your productivity habits</Text>
+            <Text style={styles.title}>{t('tabs.analytics.title')}</Text>
+            <Text style={styles.subtitle}>{t('tabs.analytics.subtitle')}</Text>
           </View>
           <Pressable
             hitSlop={8}
@@ -63,9 +65,9 @@ export default function AnalyticsScreen() {
         <View style={styles.center}>
           <EmptyState
             icon="bar-chart-outline"
-            title="No analytics yet"
-            message="Complete tasks and study sessions and your insights, trends and streaks will appear here."
-            ctaLabel="Add your first task"
+            title={t('tabs.analytics.emptyTitle')}
+            message={t('tabs.analytics.emptyMessage')}
+            ctaLabel={t('tabs.analytics.emptyCta')}
             onPress={() => router.push('/add-task')}
           />
         </View>
@@ -77,12 +79,12 @@ export default function AnalyticsScreen() {
           <View style={styles.hero}>
             <View pointerEvents="none" style={styles.heroBlob} />
             <View style={styles.heroText}>
-              <Text style={styles.heroLabel}>{"Today's Progress"}</Text>
+              <Text style={styles.heroLabel}>{t('tabs.analytics.todaysProgress')}</Text>
               <Text style={styles.heroBig}>{formatPercent(a.today.score)}</Text>
               <View style={styles.streakChip}>
                 <Ionicons name="flame" size={14} color="#FFFFFF" />
                 <Text style={styles.streakChipText}>
-                  {a.activeStreak} day{a.activeStreak === 1 ? '' : 's'} active
+                  {t('tabs.analytics.activeStreak', { count: a.activeStreak })}
                 </Text>
               </View>
             </View>
@@ -106,14 +108,14 @@ export default function AnalyticsScreen() {
               color={Palette.green}
               tint={Tint.green}
               value={`${a.tasks.done}`}
-              label="Tasks completed"
+              label={t('tabs.analytics.tasksCompleted')}
             />
             <StatTile
               icon="time-outline"
               color={Palette.blue}
               tint={Tint.blue}
               value={formatMinutesTotal(a.classes.weeklyMinutes)}
-              label="Scheduled weekly"
+              label={t('tabs.analytics.scheduledWeekly')}
             />
           </View>
           <View style={styles.tileRow}>
@@ -122,39 +124,39 @@ export default function AnalyticsScreen() {
               color={Palette.orange}
               tint={Tint.orange}
               value={`${a.habits.bestStreak}`}
-              label="Best habit streak"
+              label={t('tabs.analytics.bestHabitStreak')}
             />
             <StatTile
               icon="trending-up"
               color={Palette.primary}
               tint={Tint.primary}
               value={a.range.average.toFixed(1)}
-              label="Avg completions / day"
+              label={t('tabs.analytics.avgCompletionsPerDay')}
             />
           </View>
 
           {/* 7-day trend */}
-          <Text style={styles.sectionLabel}>Last 7 days</Text>
+          <Text style={styles.sectionLabel}>{t('tabs.analytics.last7Days')}</Text>
           <View style={styles.card}>
             <View style={styles.cardHead}>
-              <Text style={styles.cardTitle}>Completions</Text>
-              <Text style={styles.cardMeta}>{a.range.total} total</Text>
+              <Text style={styles.cardTitle}>{t('tabs.analytics.completionsTitle')}</Text>
+              <Text style={styles.cardMeta}>{t('tabs.analytics.totalMeta', { total: a.range.total })}</Text>
             </View>
             <BarChart data={barData} />
             {a.range.best ? (
               <Text style={styles.cardFoot}>
-                Best day: {a.range.best.label} with {a.range.best.total} completed
+                {t('tabs.analytics.bestDayFoot', { day: a.range.best.label, count: a.range.best.total })}
               </Text>
             ) : (
-              <Text style={styles.cardFoot}>Nothing completed yet this week.</Text>
+              <Text style={styles.cardFoot}>{t('tabs.analytics.nothingCompletedFoot')}</Text>
             )}
           </View>
 
           {/* Task breakdown */}
-          <Text style={styles.sectionLabel}>Tasks</Text>
+          <Text style={styles.sectionLabel}>{t('tabs.analytics.tasksSection')}</Text>
           <View style={styles.card}>
             <View style={styles.cardHead}>
-              <Text style={styles.cardTitle}>Completion rate</Text>
+              <Text style={styles.cardTitle}>{t('tabs.analytics.completionRateTitle')}</Text>
               <Text style={styles.cardMeta}>{formatPercent(a.tasks.completionRate)}</Text>
             </View>
             <StackedBar
@@ -165,7 +167,7 @@ export default function AnalyticsScreen() {
               style={styles.stack}
             />
             <Text style={styles.cardFoot}>
-              {a.tasks.done} done · {a.tasks.pending} pending
+              {t('tabs.analytics.doneVsPendingFoot', { done: a.tasks.done, pending: a.tasks.pending })}
             </Text>
 
             <View style={styles.divider} />
@@ -178,7 +180,7 @@ export default function AnalyticsScreen() {
                 <LegendRow
                   key={p}
                   color={color}
-                  label={`${p} priority`}
+                  label={t('tabs.analytics.priorityRow', { priority: p })}
                   value={`${row.done}/${row.total}`}
                   // The `row.total === 0` case already returned null above, so
                   // row.total is always truthy here — the `: 0` side is dead.
@@ -192,12 +194,12 @@ export default function AnalyticsScreen() {
           {/* Subject split */}
           {a.subjects.length > 0 ? (
             <>
-              <Text style={styles.sectionLabel}>Subjects</Text>
+              <Text style={styles.sectionLabel}>{t('tabs.analytics.subjectsSection')}</Text>
               <View style={styles.card}>
                 {subjectSegments.length > 0 ? (
                   <>
                     <View style={styles.cardHead}>
-                      <Text style={styles.cardTitle}>Weekly time split</Text>
+                      <Text style={styles.cardTitle}>{t('tabs.analytics.weeklyTimeSplitTitle')}</Text>
                       <Text style={styles.cardMeta}>{formatMinutesTotal(a.classes.weeklyMinutes)}</Text>
                     </View>
                     <StackedBar segments={subjectSegments} style={styles.stack} />
@@ -208,11 +210,11 @@ export default function AnalyticsScreen() {
                     key={s.name}
                     color={s.color}
                     label={s.name}
-                    value={s.minutes > 0 ? formatMinutesTotal(s.minutes) : `${s.taskTotal} tasks`}
+                    value={s.minutes > 0 ? formatMinutesTotal(s.minutes) : t('tabs.analytics.tasksCount', { count: s.taskTotal })}
                     caption={
                       s.taskTotal > 0
-                        ? `${s.taskDone}/${s.taskTotal} tasks done`
-                        : 'No tasks yet'
+                        ? t('tabs.analytics.tasksDoneCaption', { done: s.taskDone, total: s.taskTotal })
+                        : t('tabs.analytics.noTasksYetCaption')
                     }
                     progress={s.taskTotal ? s.taskDone / s.taskTotal : undefined}
                   />
@@ -224,11 +226,11 @@ export default function AnalyticsScreen() {
           {/* Weekly load */}
           {a.classes.weeklyMinutes > 0 ? (
             <>
-              <Text style={styles.sectionLabel}>Weekly load</Text>
+              <Text style={styles.sectionLabel}>{t('tabs.analytics.weeklyLoadSection')}</Text>
               <View style={styles.card}>
                 <View style={styles.cardHead}>
-                  <Text style={styles.cardTitle}>Scheduled per day</Text>
-                  <Text style={styles.cardMeta}>{a.classes.count} entries</Text>
+                  <Text style={styles.cardTitle}>{t('tabs.analytics.scheduledPerDayTitle')}</Text>
+                  <Text style={styles.cardMeta}>{t('tabs.analytics.entriesMeta', { count: a.classes.count })}</Text>
                 </View>
                 <BarChart
                   data={a.classes.perDay.map((m, i) => ({
@@ -242,33 +244,38 @@ export default function AnalyticsScreen() {
                 />
                 <Text style={styles.cardFoot}>
                   {a.classes.busiestDay !== null
-                    ? `Busiest day: ${WEEKDAY_SHORT[a.classes.busiestDay]} (${formatMinutesTotal(
-                        a.classes.perDay[a.classes.busiestDay],
-                      )})`
-                    : 'Nothing scheduled yet.'}
+                    ? t('tabs.analytics.busiestDayFoot', {
+                        day: WEEKDAY_SHORT[a.classes.busiestDay],
+                        duration: formatMinutesTotal(a.classes.perDay[a.classes.busiestDay]),
+                      })
+                    : t('tabs.analytics.nothingScheduledFoot')}
                 </Text>
               </View>
             </>
           ) : null}
 
           {/* Habits */}
-          <Text style={styles.sectionLabel}>Habits</Text>
+          <Text style={styles.sectionLabel}>{t('tabs.analytics.habitsSection')}</Text>
           <View style={styles.card}>
             {a.habits.total === 0 ? (
               <EmptyState
                 compact
                 icon="leaf-outline"
-                title="No habits tracked"
-                message="Track daily habits to see streaks and consistency here."
-                ctaLabel="Open Habit Tracker"
+                title={t('tabs.analytics.noHabitsTitle')}
+                message={t('tabs.analytics.noHabitsMessage')}
+                ctaLabel={t('tabs.analytics.openHabitTracker')}
                 onPress={() => router.push('/habits')}
               />
             ) : (
               <>
                 <View style={styles.cardHead}>
-                  <Text style={styles.cardTitle}>Today</Text>
+                  <Text style={styles.cardTitle}>{t('tabs.analytics.todayCardTitle')}</Text>
                   <Text style={styles.cardMeta}>
-                    {a.habits.done}/{a.habits.total} · {formatPercent(a.habits.completion)}
+                    {t('tabs.analytics.habitsMeta', {
+                      done: a.habits.done,
+                      total: a.habits.total,
+                      percent: formatPercent(a.habits.completion),
+                    })}
                   </Text>
                 </View>
                 {a.habits.rows.map((r) => (
@@ -276,8 +283,8 @@ export default function AnalyticsScreen() {
                     key={r.habit.id}
                     color={(Palette as unknown as Record<string, string>)[r.habit.colorKey] ?? Palette.primary}
                     label={r.habit.name}
-                    value={r.habit.unit ? `${r.current}/${r.target}` : r.done ? 'Done' : '—'}
-                    caption={`${r.streak} day streak · best ${r.bestStreak}`}
+                    value={r.habit.unit ? `${r.current}/${r.target}` : r.done ? t('common.done') : '—'}
+                    caption={t('tabs.analytics.streakCaption', { streak: r.streak, best: r.bestStreak })}
                     progress={r.pct}
                   />
                 ))}
@@ -288,7 +295,7 @@ export default function AnalyticsScreen() {
           <Pressable
             onPress={() => router.push('/study-stats')}
             style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.7 }]}>
-            <Text style={styles.moreText}>View detailed statistics</Text>
+            <Text style={styles.moreText}>{t('tabs.analytics.viewDetailedStats')}</Text>
             <Ionicons name="chevron-forward" size={18} color={Palette.primary} />
           </Pressable>
         </ScrollView>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function SecurityScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -46,7 +48,7 @@ export default function SecurityScreen() {
     setSendingReset(false);
     if (res.ok) {
       setResetCooldown(res.cooldownSeconds);
-      toast.success(`Password reset link sent to ${fbUser.email}.`);
+      toast.success(t('security.resetLinkSentToast', { email: fbUser.email }));
     } else {
       if (res.retryInSeconds) setResetCooldown(res.retryInSeconds);
       toast.show(res.error, 'error');
@@ -60,7 +62,7 @@ export default function SecurityScreen() {
     setSendingVerify(false);
     if (res.ok) {
       setVerifyCooldown(res.cooldownSeconds);
-      toast.success('Verification email sent.');
+      toast.success(t('security.verificationSentToast'));
     } else {
       if (res.retryInSeconds) setVerifyCooldown(res.retryInSeconds);
       toast.show(res.error, 'error');
@@ -78,37 +80,37 @@ export default function SecurityScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Security</Text>
+          <Text style={styles.headerTitle}>{t('security.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          <Text style={styles.sectionLabel}>Account</Text>
+          <Text style={styles.sectionLabel}>{t('security.accountSection')}</Text>
           <View style={styles.card}>
             <View style={styles.row}>
               <View style={[styles.rowIcon, { backgroundColor: Tint.primary }]}>
                 <Ionicons name="mail-outline" size={20} color={Palette.primary} />
               </View>
               <View style={styles.rowBody}>
-                <Text style={styles.rowLabel}>Signed in as</Text>
+                <Text style={styles.rowLabel}>{t('security.signedInAs')}</Text>
                 <Text style={styles.rowSub}>{fbUser?.email ?? '—'}</Text>
               </View>
               {fbUser?.emailVerified ? (
                 <View style={styles.verifiedChip}>
                   <Ionicons name="checkmark-circle" size={13} color={Palette.green} />
-                  <Text style={styles.verifiedText}>Verified</Text>
+                  <Text style={styles.verifiedText}>{t('security.verified')}</Text>
                 </View>
               ) : (
                 <Pressable onPress={resendVerification} disabled={sendingVerify || verifyCooldown > 0} style={styles.pillBtn}>
                   <Text style={styles.pillBtnText}>
-                    {sendingVerify ? 'Sending…' : verifyCooldown > 0 ? `Wait ${verifyCooldown}s` : 'Verify'}
+                    {sendingVerify ? t('auth.verifyEmail.resendSending') : verifyCooldown > 0 ? t('security.waitSeconds', { seconds: verifyCooldown }) : t('security.verifyAction')}
                   </Text>
                 </Pressable>
               )}
             </View>
           </View>
 
-          <Text style={styles.sectionLabel}>Password</Text>
+          <Text style={styles.sectionLabel}>{t('security.passwordSection')}</Text>
           <Pressable
             onPress={changePassword}
             disabled={sendingReset || resetCooldown > 0}
@@ -118,17 +120,16 @@ export default function SecurityScreen() {
               <Ionicons name="lock-closed-outline" size={20} color={Palette.blue} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.rowLabel}>Change password</Text>
+              <Text style={styles.rowLabel}>{t('security.changePasswordLabel')}</Text>
               <Text style={styles.rowSub}>
-                {resetCooldown > 0 ? `Email sent — resend in ${resetCooldown}s` : "We'll email you a reset link"}
+                {resetCooldown > 0 ? t('security.resendInSeconds', { seconds: resetCooldown }) : t('security.willEmailResetLink')}
               </Text>
             </View>
             {sendingReset ? null : <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />}
           </Pressable>
 
           <Text style={styles.footnote}>
-            Smart Planner stores your tasks, classes and habits locally on this device — only your account
-            email and password are handled by Firebase Authentication.
+            {t('security.footnote')}
           </Text>
         </ScrollView>
       </SafeAreaView>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const register = useAuthStore((s) => s.register);
   const loading = useAuthStore((s) => s.status === 'loading');
@@ -48,15 +50,15 @@ export default function RegisterScreen() {
       if (res.verificationSent === false) {
         toast.error(
           res.verificationError
-            ? `Account created, but the verification email failed: ${res.verificationError}`
-            : 'Account created, but the verification email could not be sent. Tap "Resend email".',
+            ? t('auth.register.accountCreatedButEmailFailed', { error: res.verificationError })
+            : t('auth.register.accountCreatedButEmailNotSent'),
         );
       } else {
-        toast.success('Account created! Check your inbox (and spam) to verify your email.');
+        toast.success(t('auth.register.accountCreatedToast'));
       }
       router.replace('/verify-email');
     } else {
-      toast.error(res.error ?? 'Could not create account.');
+      toast.error(res.error ?? t('auth.register.createAccountFailedFallback'));
     }
   };
 
@@ -73,18 +75,18 @@ export default function RegisterScreen() {
             <View style={styles.logo}>
               <Ionicons name="sparkles" size={24} color="#FFFFFF" />
             </View>
-            <Text style={styles.title}>Create your account</Text>
-            <Text style={styles.subtitle}>Your AI planner, tailored to you.</Text>
+            <Text style={styles.title}>{t('auth.register.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
 
             <View style={styles.form}>
-              <TextField label="Full Name" value={name} onChangeText={setName} placeholder="Jane Doe" icon="person-outline" autoCapitalize="words" error={errors.name} />
-              <TextField label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" icon="mail-outline" keyboardType="email-address" error={errors.email} />
-              <TextField label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters" icon="lock-closed-outline" secure error={errors.password} />
+              <TextField label={t('auth.register.fullNameLabel')} value={name} onChangeText={setName} placeholder={t('auth.register.fullNamePlaceholder')} icon="person-outline" autoCapitalize="words" error={errors.name} />
+              <TextField label={t('common.email')} value={email} onChangeText={setEmail} placeholder={t('common.emailPlaceholder')} icon="mail-outline" keyboardType="email-address" error={errors.email} />
+              <TextField label={t('common.password')} value={password} onChangeText={setPassword} placeholder={t('auth.register.passwordPlaceholder')} icon="lock-closed-outline" secure error={errors.password} />
               <TextField
-                label="Confirm Password"
+                label={t('auth.register.confirmPasswordLabel')}
                 value={confirm}
                 onChangeText={setConfirm}
-                placeholder="Re-enter password"
+                placeholder={t('auth.register.confirmPasswordPlaceholder')}
                 icon="lock-closed-outline"
                 secure
                 error={errors.confirm}
@@ -92,13 +94,13 @@ export default function RegisterScreen() {
                 onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
               />
 
-              <Button title="Create Account" onPress={submit} loading={loading} style={styles.cta} />
+              <Button title={t('auth.register.cta')} onPress={submit} loading={loading} style={styles.cta} />
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerText}>{t('auth.register.footerText')}</Text>
               <Pressable hitSlop={8} onPress={() => router.replace('/login')}>
-                <Text style={styles.footerLink}>Log in</Text>
+                <Text style={styles.footerLink}>{t('auth.register.footerLink')}</Text>
               </Pressable>
             </View>
           </ScrollView>

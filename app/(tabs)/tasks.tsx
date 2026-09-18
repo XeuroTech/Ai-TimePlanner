@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   LayoutAnimation,
@@ -43,11 +44,15 @@ function getPriorityStyle(Palette: AppPalette, Tint: AppTint): Record<Priority, 
 }
 
 type Filter = 'all' | 'pending' | 'completed';
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'completed', label: 'Completed' },
-];
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function getFilters(t: TFn): { key: Filter; label: string }[] {
+  return [
+    { key: 'all', label: t('tabs.tasks.filters.all') },
+    { key: 'pending', label: t('tabs.tasks.filters.pending') },
+    { key: 'completed', label: t('tabs.tasks.filters.completed') },
+  ];
+}
 
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
@@ -56,11 +61,13 @@ const FILTERS: { key: Filter; label: string }[] = [
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const tabBarSpace = 60 + (insets.bottom > 0 ? insets.bottom : 12);
 
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const PRIORITY_STYLE = useMemo(() => getPriorityStyle(Palette, Tint), [Palette, Tint]);
+  const FILTERS = useMemo(() => getFilters(t), [t]);
 
   const tasks = useMyTasks();
   const toggleTask = usePlannerStore((s) => s.toggleTask);
@@ -99,16 +106,16 @@ export default function TasksScreen() {
   /** Long-press surfaces edit/delete without cluttering the row itself. */
   const onLongPressTask = (task: PlanTask) => {
     Alert.alert(task.title, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Edit', onPress: () => router.push({ pathname: '/add-task', params: { taskId: task.id } }) },
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.edit'), onPress: () => router.push({ pathname: '/add-task', params: { taskId: task.id } }) },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () =>
-          Alert.alert('Delete task', `Delete "${task.title}"? This can't be undone.`, [
-            { text: 'Cancel', style: 'cancel' },
+          Alert.alert(t('tabs.tasks.deleteTaskTitle'), t('tabs.tasks.deleteTaskMessage', { title: task.title }), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Delete',
+              text: t('common.delete'),
               style: 'destructive',
               onPress: () => {
                 animateNext();
@@ -131,9 +138,9 @@ export default function TasksScreen() {
       <View style={{ paddingTop: insets.top + 8 }}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>My Tasks</Text>
+            <Text style={styles.title}>{t('tabs.tasks.title')}</Text>
             <Text style={styles.summary}>
-              {pendingCount} pending · {completedCount} completed
+              {t('tabs.tasks.summary', { pending: pendingCount, completed: completedCount })}
             </Text>
           </View>
           <View style={styles.headerIcon}>
@@ -235,14 +242,15 @@ export default function TasksScreen() {
 /* -------------------------------------------------------------------------- */
 
 function EmptyState({ filter }: { filter: Filter }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const message =
     filter === 'completed'
-      ? 'No completed tasks yet.'
+      ? t('tabs.tasks.emptyCompleted')
       : filter === 'pending'
-        ? 'All caught up — nothing pending!'
-        : 'No tasks yet. Add your first one.';
+        ? t('tabs.tasks.emptyPending')
+        : t('tabs.tasks.emptyAll');
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>

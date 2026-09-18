@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactElement, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Pressable,
@@ -38,33 +39,39 @@ type Slide = {
   Art: () => ReactElement;
 };
 
-const SLIDES: Slide[] = [
-  {
-    key: 'welcome',
-    title: 'Welcome to Smart Planner',
-    subtitle: 'Your AI powered personal timetable assistant.',
-    Art: RobotStudentArt,
-  },
-  {
-    key: 'ai-schedule',
-    title: 'AI That Plans For You',
-    subtitle: 'Let AI build the perfect timetable around your classes and goals.',
-    Art: AiScheduleArt,
-  },
-  {
-    key: 'reminders',
-    title: 'Never Miss a Task',
-    subtitle: 'Smart reminders keep your study sessions and deadlines on track.',
-    Art: RemindersArt,
-  },
-];
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function getSlides(t: TFn): Slide[] {
+  return [
+    {
+      key: 'welcome',
+      title: t('onboardingCarousel.slides.welcome.title'),
+      subtitle: t('onboardingCarousel.slides.welcome.subtitle'),
+      Art: RobotStudentArt,
+    },
+    {
+      key: 'ai-schedule',
+      title: t('onboardingCarousel.slides.aiSchedule.title'),
+      subtitle: t('onboardingCarousel.slides.aiSchedule.subtitle'),
+      Art: AiScheduleArt,
+    },
+    {
+      key: 'reminders',
+      title: t('onboardingCarousel.slides.reminders.title'),
+      subtitle: t('onboardingCarousel.slides.reminders.subtitle'),
+      Art: RemindersArt,
+    },
+  ];
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const { width } = useWindowDimensions();
   const scrollX = useRef(new Animated.Value(0)).current;
+  const SLIDES = useMemo(() => getSlides(t), [t]);
 
   const enterApp = () => router.replace('/register');
   // TODO(backend): replace with router.push('/login') when the auth screen exists.
@@ -92,7 +99,7 @@ export default function OnboardingScreen() {
             onPress={enterApp}
             hitSlop={12}
             style={({ pressed }) => pressed && styles.pressed}>
-            <Text style={styles.skip}>Skip</Text>
+            <Text style={styles.skip}>{t('common.skip')}</Text>
           </Pressable>
         </View>
 
@@ -141,14 +148,14 @@ export default function OnboardingScreen() {
             onPress={enterApp}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.primaryPressed]}>
-            <Text style={styles.primaryText}>Get Started</Text>
+            <Text style={styles.primaryText}>{t('common.getStarted')}</Text>
           </Pressable>
 
           <Pressable
             onPress={login}
             android_ripple={{ color: 'rgba(108,77,255,0.12)' }}
             style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryPressed]}>
-            <Text style={styles.secondaryText}>Login</Text>
+            <Text style={styles.secondaryText}>{t('onboardingCarousel.login')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

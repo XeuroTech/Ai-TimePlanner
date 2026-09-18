@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,6 +45,7 @@ function weekdayIndex(d: Date): number {
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [view, setView] = useState({ year: TODAY.getFullYear(), month: TODAY.getMonth() });
@@ -100,7 +102,7 @@ export default function CalendarScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Calendar</Text>
+          <Text style={styles.headerTitle}>{t('calendar.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -174,14 +176,14 @@ export default function CalendarScreen() {
 
           {/* Events */}
           <View style={styles.eventsHeader}>
-            <Text style={styles.eventsTitle}>Events on {selectedLabel}</Text>
-            {isTodaySelected(selected) ? <Text style={styles.todayBadge}>Today</Text> : null}
+            <Text style={styles.eventsTitle}>{t('calendar.eventsOn', { date: selectedLabel })}</Text>
+            {isTodaySelected(selected) ? <Text style={styles.todayBadge}>{t('calendar.todayBadge')}</Text> : null}
           </View>
 
           {selectedEvents.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="calendar-outline" size={30} color={Palette.subtle} />
-              <Text style={styles.emptyText}>No events scheduled</Text>
+              <Text style={styles.emptyText}>{t('calendar.noEvents')}</Text>
             </View>
           ) : (
             selectedEvents.map((e) => (

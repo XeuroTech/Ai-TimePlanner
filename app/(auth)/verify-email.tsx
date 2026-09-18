@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppState, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +21,7 @@ const SENDER = `noreply@${firebaseConfig.authDomain ?? 'firebaseapp.com'}`;
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const fbUser = useAuthStore((s) => s.fbUser);
   const onboarded = useAuthStore((s) => !!s.profile?.onboarded);
@@ -83,7 +85,7 @@ export default function VerifyEmailScreen() {
     if (verified) {
       goOn();
     } else {
-      toast.error('Still not verified. Check your inbox and spam folder, or resend the email.');
+      toast.error(t('auth.verifyEmail.stillNotVerifiedToast'));
     }
   };
 
@@ -93,7 +95,7 @@ export default function VerifyEmailScreen() {
     setResending(false);
     if (res.ok) {
       setCooldown(res.cooldownSeconds);
-      toast.success('Verification email sent. Check your inbox and spam folder.');
+      toast.success(t('auth.verifyEmail.verificationSentToast'));
     } else {
       // A throttle refusal says exactly how long to disable the control for,
       // instead of letting the next tap hit the same wall.
@@ -108,7 +110,11 @@ export default function VerifyEmailScreen() {
   };
 
   const resendDisabled = resending || cooldown > 0;
-  const resendLabel = resending ? 'Sending…' : cooldown > 0 ? `Resend email in ${cooldown}s` : 'Resend email';
+  const resendLabel = resending
+    ? t('auth.verifyEmail.resendSending')
+    : cooldown > 0
+      ? t('auth.verifyEmail.resendLabelCountdown', { seconds: cooldown })
+      : t('auth.verifyEmail.resendLabel');
 
   return (
     <View style={styles.root}>
@@ -119,19 +125,18 @@ export default function VerifyEmailScreen() {
             <View style={styles.badge}>
               <Ionicons name="mail-unread-outline" size={38} color={Palette.primary} />
             </View>
-            <Text style={styles.title}>Verify your email</Text>
+            <Text style={styles.title}>{t('auth.verifyEmail.title')}</Text>
             <Text style={styles.subtitle}>
-              We sent a verification link to {fbUser.email}. Open it, then come back — this screen continues on its
-              own.
+              {t('auth.verifyEmail.subtitle', { email: fbUser.email })}
             </Text>
-            <Text style={styles.hint}>Nothing yet? Check spam and promotions for a mail from {SENDER}.</Text>
+            <Text style={styles.hint}>{t('auth.verifyEmail.hint', { sender: SENDER })}</Text>
             <View style={styles.form}>
-              <Button title="I've Verified — Continue" onPress={checkAgain} loading={checking} />
+              <Button title={t('auth.verifyEmail.continueButton')} onPress={checkAgain} loading={checking} />
               <Pressable hitSlop={8} onPress={resend} disabled={resendDisabled} style={styles.resend}>
                 <Text style={[styles.resendText, resendDisabled && styles.resendTextDisabled]}>{resendLabel}</Text>
               </Pressable>
               <Pressable hitSlop={8} onPress={useAnotherAccount} style={styles.resend}>
-                <Text style={styles.logoutText}>Use a different account</Text>
+                <Text style={styles.logoutText}>{t('auth.verifyEmail.useAnotherAccount')}</Text>
               </Pressable>
             </View>
           </View>

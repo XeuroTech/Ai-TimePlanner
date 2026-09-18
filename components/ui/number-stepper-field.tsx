@@ -8,6 +8,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppPalette, FontFamily } from '@/constants/palette';
@@ -35,6 +36,7 @@ export function NumberStepperField({
   /** Overrides the default `${value} ${unit}` display. */
   formatValue?: (v: number) => string;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const [open, setOpen] = useState(false);
@@ -67,7 +69,7 @@ export function NumberStepperField({
         initial={value}
         min={min}
         max={max}
-        title={title ?? 'Set value'}
+        title={title ?? t('numberStepper.setValue')}
         unit={unit}
         onCancel={() => setOpen(false)}
         onConfirm={(v) => {
@@ -132,6 +134,7 @@ function EntrySheetBody({
   onCancel: () => void;
   onConfirm: (v: number) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const [text, setText] = useState(`${initial}`);
@@ -156,18 +159,18 @@ function EntrySheetBody({
           {unit ? <Text style={styles.unit}>{unit}</Text> : null}
         </View>
         <Text style={styles.range}>
-          Between {min} and {max}
+          {t('numberStepper.between', { min, max })}
         </Text>
 
         <View style={styles.actions}>
           <Pressable onPress={onCancel} style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
-            <Text style={styles.ghostText}>Cancel</Text>
+            <Text style={styles.ghostText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => valid && onConfirm(parsed)}
             disabled={!valid}
             style={({ pressed }) => [styles.primaryBtn, !valid && styles.primaryDisabled, pressed && valid && styles.primaryPressed]}>
-            <Text style={styles.primaryText}>Set</Text>
+            <Text style={styles.primaryText}>{t('numberStepper.set')}</Text>
           </Pressable>
         </View>
       </Pressable>

@@ -2,9 +2,13 @@ import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
+// Side-effect import: initializes i18next exactly once, before any screen
+// renders and calls useTranslation().
+import '@/i18n';
 import { ToastProvider } from '@/components/ui/toast';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAutoBackup } from '@/hooks/use-auto-backup';
@@ -35,6 +39,7 @@ export const unstable_settings = {
  * throws at module scope.
  */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  const { t } = useTranslation();
   useEffect(() => {
     reportError(error, 'root-error-boundary');
   }, [error]);
@@ -42,11 +47,11 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Pro
   return (
     <View style={styles.errorRoot}>
       <ScrollView contentContainerStyle={styles.errorContent}>
-        <Text style={styles.errorTitle}>Something went wrong</Text>
-        <Text style={styles.errorMessage}>{error?.message ?? 'Unknown error'}</Text>
+        <Text style={styles.errorTitle}>{t('errorBoundary.title')}</Text>
+        <Text style={styles.errorMessage}>{error?.message ?? t('errorBoundary.unknownError')}</Text>
         {error?.stack ? <Text style={styles.errorStack}>{error.stack}</Text> : null}
         <Text style={styles.errorRetry} onPress={() => void retry()}>
-          Tap to retry
+          {t('errorBoundary.retry')}
         </Text>
       </ScrollView>
     </View>

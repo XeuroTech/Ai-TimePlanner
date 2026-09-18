@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function CategoryScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
   const updateProfile = useAuthStore((s) => s.updateProfile);
@@ -40,8 +42,8 @@ export default function CategoryScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>What best describes you?</Text>
-          <Text style={styles.subtitle}>We&apos;ll tailor your planner to how you work.</Text>
+          <Text style={styles.title}>{t('onboarding.category.title')}</Text>
+          <Text style={styles.subtitle}>{t('onboarding.category.subtitle')}</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid}>
@@ -57,7 +59,7 @@ export default function CategoryScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button title="Continue" icon="arrow-forward" onPress={onContinue} disabled={!selected} loading={saving} />
+          <Button title={t('common.continue')} icon="arrow-forward" onPress={onContinue} disabled={!selected} loading={saving} />
         </View>
       </SafeAreaView>
     </View>
