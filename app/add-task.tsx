@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -24,6 +25,7 @@ const DUE_OPTIONS = ['Today', 'Tomorrow', 'This week', 'Next week', 'No date'];
 
 export default function AddTaskScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const addTask = usePlannerStore((s) => s.addTask);
   const updateTask = usePlannerStore((s) => s.updateTask);
@@ -45,11 +47,11 @@ export default function AddTaskScreen() {
 
   const onSave = () => {
     if (!title.trim()) {
-      setError('Please enter a task title.');
+      setError(t('addTask.titleRequiredError'));
       return;
     }
     setError(null);
-    const payload = { title: title.trim(), subject: subject.trim() || 'General', due, priority };
+    const payload = { title: title.trim(), subject: subject.trim() || t('addTask.generalSubjectFallback'), due, priority };
     if (editing) updateTask(editing.id, payload);
     else addTask(payload);
     router.back();
@@ -66,7 +68,7 @@ export default function AddTaskScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>{editing ? 'Edit Task' : 'Add Task'}</Text>
+          <Text style={styles.headerTitle}>{editing ? t('addTask.editTitle') : t('common.addTask')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -78,33 +80,33 @@ export default function AddTaskScreen() {
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            <Field label="Task">
+            <Field label={t('addTask.taskLabel')}>
               <View style={styles.inputWrap}>
                 <Ionicons name="checkmark-done-outline" size={18} color={Palette.subtle} style={styles.inputIcon} />
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
-                  placeholder="e.g. Finish assignment"
+                  placeholder={t('addTask.taskPlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                 />
               </View>
             </Field>
 
-            <Field label="Subject / Category">
+            <Field label={t('addTask.subjectLabel')}>
               <View style={styles.inputWrap}>
                 <Ionicons name="pricetag-outline" size={18} color={Palette.subtle} style={styles.inputIcon} />
                 <TextInput
                   value={subject}
                   onChangeText={setSubject}
-                  placeholder="e.g. Mathematics"
+                  placeholder={t('addTask.subjectPlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                 />
               </View>
             </Field>
 
-            <Field label="Due">
+            <Field label={t('addTask.dueLabel')}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -125,7 +127,7 @@ export default function AddTaskScreen() {
               </ScrollView>
             </Field>
 
-            <Field label="Priority">
+            <Field label={t('addTask.priorityLabel')}>
               <View style={styles.priorityRow}>
                 {PRIORITIES.map((p) => {
                   const active = p === priority;
@@ -156,7 +158,7 @@ export default function AddTaskScreen() {
             onPress={onSave}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.saveBtn, pressed && styles.savePressed]}>
-            <Text style={styles.saveText}>{editing ? 'Save Changes' : 'Save Task'}</Text>
+            <Text style={styles.saveText}>{editing ? t('addEntry.saveChanges') : t('addTask.saveTask')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

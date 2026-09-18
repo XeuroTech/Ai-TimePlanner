@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,18 +18,14 @@ const SUBJECTS = ['Math', 'Physics', 'Programming', 'English', 'Chemistry', 'Bio
 const DIFFICULTY = ['Easy', 'Medium', 'Hard'] as const;
 type Difficulty = (typeof DIFFICULTY)[number];
 
-const SUGGESTIONS = [
-  'Schedule harder subjects earlier in the day',
-  'Add a revision day before the exam',
-  'Keep sessions under 90 minutes for better focus',
-];
-
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
 /* -------------------------------------------------------------------------- */
 
 export default function AiScheduleScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const SUGGESTIONS = t('aiSchedule.suggestions', { returnObjects: true }) as string[];
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
@@ -88,7 +85,7 @@ export default function AiScheduleScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>AI Generator</Text>
+          <Text style={styles.headerTitle}>{t('aiSchedule.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -98,12 +95,12 @@ export default function AiScheduleScreen() {
             <View pointerEvents="none" style={styles.heroBlobTop} />
             <View pointerEvents="none" style={styles.heroBlobBottom} />
             <AnimatedOrb />
-            <Text style={styles.heroTitle}>Let AI plan your study</Text>
-            <Text style={styles.heroSub}>Answer a few questions and get a personalized schedule.</Text>
+            <Text style={styles.heroTitle}>{t('aiSchedule.heroTitle')}</Text>
+            <Text style={styles.heroSub}>{t('aiSchedule.heroSub')}</Text>
           </View>
 
           {/* Subjects */}
-          <Section icon="library-outline" color={Palette.primary} tint={Tint.primary} title="Subjects">
+          <Section icon="library-outline" color={Palette.primary} tint={Tint.primary} title={t('aiSchedule.sections.subjects')}>
             <View style={styles.chipsWrap}>
               {subjectOptions.map((s) => {
                 const active = selected.includes(s);
@@ -120,16 +117,16 @@ export default function AiScheduleScreen() {
           </Section>
 
           {/* Study hours */}
-          <Section icon="time-outline" color={Palette.blue} tint={Tint.blue} title="Study Hours / day">
+          <Section icon="time-outline" color={Palette.blue} tint={Tint.blue} title={t('aiSchedule.sections.studyHours')}>
             <Stepper
-              display={`${studyHours} h`}
+              display={t('aiSchedule.hoursDisplay', { hours: studyHours })}
               onDec={() => setStudyHours((v) => Math.max(1, v - 1))}
               onInc={() => setStudyHours((v) => Math.min(12, v + 1))}
             />
           </Section>
 
           {/* Difficulty */}
-          <Section icon="speedometer-outline" color={Palette.orange} tint={Tint.orange} title="Difficulty">
+          <Section icon="speedometer-outline" color={Palette.orange} tint={Tint.orange} title={t('aiSchedule.sections.difficulty')}>
             <View style={styles.segment}>
               {DIFFICULTY.map((d) => {
                 const active = d === difficulty;
@@ -146,7 +143,7 @@ export default function AiScheduleScreen() {
           </Section>
 
           {/* Exam date */}
-          <Section icon="calendar-outline" color={Palette.pink} tint={Tint.pink} title="Exam Date">
+          <Section icon="calendar-outline" color={Palette.pink} tint={Tint.pink} title={t('aiSchedule.sections.examDate')}>
             <Stepper
               display={examLabel}
               wide
@@ -156,9 +153,9 @@ export default function AiScheduleScreen() {
           </Section>
 
           {/* Break time */}
-          <Section icon="cafe-outline" color={Palette.green} tint={Tint.green} title="Break Time">
+          <Section icon="cafe-outline" color={Palette.green} tint={Tint.green} title={t('aiSchedule.sections.breakTime')}>
             <Stepper
-              display={`${breakTime} min`}
+              display={t('aiSchedule.minutesDisplay', { minutes: breakTime })}
               onDec={() => setBreakTime((v) => Math.max(5, v - 5))}
               onInc={() => setBreakTime((v) => Math.min(60, v + 5))}
             />
@@ -168,7 +165,7 @@ export default function AiScheduleScreen() {
           <View style={styles.suggestCard}>
             <View style={styles.suggestHeader}>
               <Ionicons name="sparkles" size={18} color={Palette.primary} />
-              <Text style={styles.suggestTitle}>AI Suggestions</Text>
+              <Text style={styles.suggestTitle}>{t('aiSchedule.suggestionsTitle')}</Text>
             </View>
             {SUGGESTIONS.map((s) => (
               <View key={s} style={styles.suggestRow}>
@@ -191,7 +188,7 @@ export default function AiScheduleScreen() {
               pressed && selected.length > 0 && styles.generatePressed,
             ]}>
             <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-            <Text style={styles.generateText}>Generate Schedule</Text>
+            <Text style={styles.generateText}>{t('aiSchedule.generateButton')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

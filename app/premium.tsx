@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,67 +27,39 @@ type Plan = {
   badge?: string;
 };
 
-const PLANS: Plan[] = [
-  { id: 'monthly', label: 'Monthly', price: '$4.99', per: '/month', caption: 'Billed every month · cancel anytime' },
-  { id: 'yearly', label: 'Yearly', price: '$29.99', per: '/year', caption: 'Just $2.50 a month · billed once', badge: 'Save 50%' },
-];
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function getPlans(t: TFn): Plan[] {
+  return [
+    { id: 'monthly', label: t('premium.plans.monthly.label'), price: '$4.99', per: t('premium.plans.monthly.per'), caption: t('premium.plans.monthly.caption') },
+    { id: 'yearly', label: t('premium.plans.yearly.label'), price: '$29.99', per: t('premium.plans.yearly.per'), caption: t('premium.plans.yearly.caption'), badge: t('premium.plans.yearly.badge') },
+  ];
+}
 
 type Perk = { id: string; icon: IoniconName; colorKey: 'primary' | 'blue' | 'green' | 'orange' | 'pink'; title: string; blurb: string };
 
-const PERKS: Perk[] = [
-  {
-    id: 'ai',
-    icon: 'sparkles',
-    colorKey: 'primary',
-    title: 'Unlimited AI schedules',
-    blurb: 'Generate as many study plans as you want, with no daily cap.',
-  },
-  {
-    id: 'analytics',
-    icon: 'stats-chart',
-    colorKey: 'blue',
-    title: 'Advanced analytics',
-    blurb: 'Weekly focus trends, subject breakdowns and streak insights.',
-  },
-  {
-    id: 'habits',
-    icon: 'flame',
-    colorKey: 'pink',
-    title: 'Unlimited habits & routines',
-    blurb: 'Track every habit you care about instead of just the first three.',
-  },
-  {
-    id: 'backup',
-    icon: 'cloud-done',
-    colorKey: 'green',
-    title: 'Backup & sync',
-    blurb: 'Keep your timetable safe and pick it up on any device.',
-  },
-  {
-    id: 'themes',
-    icon: 'color-palette',
-    colorKey: 'orange',
-    title: 'Custom themes',
-    blurb: 'Extra colour sets and app icons to make the planner yours.',
-  },
-  {
-    id: 'support',
-    icon: 'headset',
-    colorKey: 'primary',
-    title: 'Priority support',
-    blurb: 'Questions answered first, straight from the team.',
-  },
-];
+function getPerks(t: TFn): Perk[] {
+  return [
+    { id: 'ai', icon: 'sparkles', colorKey: 'primary', title: t('premium.perks.ai.title'), blurb: t('premium.perks.ai.blurb') },
+    { id: 'analytics', icon: 'stats-chart', colorKey: 'blue', title: t('premium.perks.analytics.title'), blurb: t('premium.perks.analytics.blurb') },
+    { id: 'habits', icon: 'flame', colorKey: 'pink', title: t('premium.perks.habits.title'), blurb: t('premium.perks.habits.blurb') },
+    { id: 'backup', icon: 'cloud-done', colorKey: 'green', title: t('premium.perks.backup.title'), blurb: t('premium.perks.backup.blurb') },
+    { id: 'themes', icon: 'color-palette', colorKey: 'orange', title: t('premium.perks.themes.title'), blurb: t('premium.perks.themes.blurb') },
+    { id: 'support', icon: 'headset', colorKey: 'primary', title: t('premium.perks.support.title'), blurb: t('premium.perks.support.blurb') },
+  ];
+}
 
 type CompareRow = { id: string; label: string; free: string; premium: string };
 
-const COMPARE: CompareRow[] = [
-  { id: 'ai', label: 'AI schedules', free: '3 / day', premium: 'Unlimited' },
-  { id: 'habits', label: 'Habits tracked', free: 'Up to 3', premium: 'Unlimited' },
-  { id: 'analytics', label: 'Analytics', free: 'Basic', premium: 'Advanced' },
-  { id: 'backup', label: 'Cloud backup', free: '—', premium: 'Included' },
-  { id: 'themes', label: 'Themes', free: 'Light & dark', premium: 'All themes' },
-];
+function getCompare(t: TFn): CompareRow[] {
+  return [
+    { id: 'ai', label: t('premium.compare.ai.label'), free: t('premium.compare.ai.free'), premium: t('premium.compare.ai.premium') },
+    { id: 'habits', label: t('premium.compare.habits.label'), free: t('premium.compare.habits.free'), premium: t('premium.compare.habits.premium') },
+    { id: 'analytics', label: t('premium.compare.analytics.label'), free: t('premium.compare.analytics.free'), premium: t('premium.compare.analytics.premium') },
+    { id: 'backup', label: t('premium.compare.backup.label'), free: t('premium.compare.backup.free'), premium: t('premium.compare.backup.premium') },
+    { id: 'themes', label: t('premium.compare.themes.label'), free: t('premium.compare.themes.free'), premium: t('premium.compare.themes.premium') },
+  ];
+}
 
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                     */
@@ -94,6 +67,7 @@ const COMPARE: CompareRow[] = [
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -101,6 +75,10 @@ export default function PremiumScreen() {
   const { isPremium, billingCycle, since, upgrade, downgrade } = usePremium();
   const [selected, setSelected] = useState<BillingCycle>(billingCycle);
   const [busy, setBusy] = useState(false);
+
+  const PLANS = useMemo(() => getPlans(t), [t]);
+  const PERKS = useMemo(() => getPerks(t), [t]);
+  const COMPARE = useMemo(() => getCompare(t), [t]);
 
   const plan = PLANS.find((p) => p.id === selected) ?? PLANS[0];
   const activePlan = PLANS.find((p) => p.id === billingCycle) ?? PLANS[0];
@@ -120,9 +98,9 @@ export default function PremiumScreen() {
     try {
       await upgrade(selected);
       trackEvent('premium_upgraded', { cycle: selected });
-      toast.show("You're Premium now — everything is unlocked.", 'success');
+      toast.show(t('premium.upgradedToast'), 'success');
     } catch {
-      toast.show('Could not activate Premium. Please try again.', 'error');
+      toast.show(t('premium.upgradeFailedToast'), 'error');
     } finally {
       setBusy(false);
     }
@@ -138,9 +116,9 @@ export default function PremiumScreen() {
     try {
       await downgrade();
       trackEvent('premium_cancelled');
-      toast.show('Switched back to the Free plan.', 'info');
+      toast.show(t('premium.downgradedToast'), 'info');
     } catch {
-      toast.show('Could not change your plan. Please try again.', 'error');
+      toast.show(t('premium.downgradeFailedToast'), 'error');
     } finally {
       setBusy(false);
     }
@@ -158,7 +136,7 @@ export default function PremiumScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Premium</Text>
+          <Text style={styles.headerTitle}>{t('premium.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -176,20 +154,21 @@ export default function PremiumScreen() {
               <>
                 <View style={styles.activePill}>
                   <Ionicons name="checkmark-circle" size={13} color="#FFFFFF" />
-                  <Text style={styles.activePillText}>Premium active</Text>
+                  <Text style={styles.activePillText}>{t('premium.activeChip')}</Text>
                 </View>
-                <Text style={styles.heroTitle}>You&apos;re all set</Text>
+                <Text style={styles.heroTitle}>{t('premium.allSetTitle')}</Text>
                 <Text style={styles.heroSub}>
-                  {activePlan.label} plan{sinceLabel ? ` · since ${sinceLabel}` : ''}. Every feature below is
-                  unlocked.
+                  {t('premium.activeHeroSub', {
+                    plan: activePlan.label,
+                    since: sinceLabel ? t('premium.sinceSuffix', { date: sinceLabel }) : '',
+                  })}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={styles.heroTitle}>Smart Planner Premium</Text>
+                <Text style={styles.heroTitle}>{t('premium.marketingTitle')}</Text>
                 <Text style={styles.heroSub}>
-                  Unlimited AI planning, deeper analytics and cloud backup — built for students who are
-                  serious about their time.
+                  {t('premium.marketingSub')}
                 </Text>
               </>
             )}
@@ -198,7 +177,7 @@ export default function PremiumScreen() {
           {/* Billing picker — only while on Free */}
           {!isPremium ? (
             <>
-              <Text style={styles.sectionLabel}>Choose your plan</Text>
+              <Text style={styles.sectionLabel}>{t('premium.choosePlanSection')}</Text>
               <View style={styles.planRow}>
                 {PLANS.map((p) => {
                   const active = p.id === selected;
@@ -237,7 +216,7 @@ export default function PremiumScreen() {
           ) : null}
 
           {/* Perks */}
-          <Text style={styles.sectionLabel}>What you get</Text>
+          <Text style={styles.sectionLabel}>{t('premium.whatYouGetSection')}</Text>
           <View style={styles.card}>
             {PERKS.map((perk, i) => (
               <View key={perk.id}>
@@ -261,12 +240,12 @@ export default function PremiumScreen() {
           </View>
 
           {/* Comparison */}
-          <Text style={styles.sectionLabel}>Free vs Premium</Text>
+          <Text style={styles.sectionLabel}>{t('premium.compareSection')}</Text>
           <View style={styles.card}>
             <View style={styles.compareHead}>
               <Text style={[styles.compareCell, styles.compareHeadLabel]} />
-              <Text style={[styles.compareCell, styles.compareHeadText]}>Free</Text>
-              <Text style={[styles.compareCell, styles.compareHeadText, styles.compareHeadPro]}>Premium</Text>
+              <Text style={[styles.compareCell, styles.compareHeadText]}>{t('premium.freeColumnHeader')}</Text>
+              <Text style={[styles.compareCell, styles.compareHeadText, styles.compareHeadPro]}>{t('premium.premiumColumnHeader')}</Text>
             </View>
             {COMPARE.map((row, i) => (
               <View key={row.id}>
@@ -281,7 +260,7 @@ export default function PremiumScreen() {
           </View>
 
           <Text style={styles.disclaimer}>
-            Demo build — no real payment is processed. Your plan is stored on this device only.
+            {t('premium.disclaimer')}
           </Text>
         </ScrollView>
 
@@ -291,14 +270,14 @@ export default function PremiumScreen() {
             <>
               <View style={styles.ctaDone}>
                 <Ionicons name="checkmark-circle" size={19} color={Palette.green} />
-                <Text style={styles.ctaDoneText}>Premium is active</Text>
+                <Text style={styles.ctaDoneText}>{t('premium.activeCtaText')}</Text>
               </View>
               <Pressable
                 onPress={onDowngrade}
                 disabled={busy}
                 hitSlop={8}
                 style={({ pressed }) => [styles.linkBtn, pressed && styles.pressed]}>
-                <Text style={styles.linkText}>Switch back to Free plan</Text>
+                <Text style={styles.linkText}>{t('premium.switchToFreeLink')}</Text>
               </Pressable>
             </>
           ) : (
@@ -310,10 +289,10 @@ export default function PremiumScreen() {
                 style={({ pressed }) => [styles.cta, busy && styles.ctaDisabled, pressed && !busy && styles.ctaPressed]}>
                 <Ionicons name="diamond" size={18} color="#FFFFFF" />
                 <Text style={styles.ctaText}>
-                  {busy ? 'Activating…' : `Upgrade — ${plan.price}${plan.per}`}
+                  {busy ? t('premium.activating') : t('premium.upgradeButton', { price: plan.price, per: plan.per })}
                 </Text>
               </Pressable>
-              <Text style={styles.ctaNote}>Cancel anytime · no card required in this demo</Text>
+              <Text style={styles.ctaNote}>{t('premium.ctaNote')}</Text>
             </>
           )}
         </View>

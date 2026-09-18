@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,14 +31,16 @@ type Achievement = {
   unlocked: boolean;
 };
 
+type TFn = ReturnType<typeof useTranslation>['t'];
+
 /** Derived purely from real analytics, so nothing here can unlock on mock data. */
-function buildAchievements(a: Analytics): Achievement[] {
+function buildAchievements(t: TFn, a: Analytics): Achievement[] {
   const ratio = (value: number, goal: number) => Math.max(0, Math.min(1, value / goal));
   return [
     {
       id: 'first-step',
-      title: 'First Step',
-      caption: 'Complete your first task',
+      title: t('studyStats.achievements.firstStep.title'),
+      caption: t('studyStats.achievements.firstStep.caption'),
       icon: 'footsteps-outline',
       colorKey: 'green',
       progress: ratio(a.tasks.done, 1),
@@ -45,8 +48,8 @@ function buildAchievements(a: Analytics): Achievement[] {
     },
     {
       id: 'consistent',
-      title: 'Consistent',
-      caption: '3-day activity streak',
+      title: t('studyStats.achievements.consistent.title'),
+      caption: t('studyStats.achievements.consistent.caption'),
       icon: 'flame-outline',
       colorKey: 'orange',
       progress: ratio(a.activeStreak, 3),
@@ -54,8 +57,8 @@ function buildAchievements(a: Analytics): Achievement[] {
     },
     {
       id: 'committed',
-      title: 'Committed',
-      caption: '7-day activity streak',
+      title: t('studyStats.achievements.committed.title'),
+      caption: t('studyStats.achievements.committed.caption'),
       icon: 'trophy-outline',
       colorKey: 'pink',
       progress: ratio(a.activeStreak, 7),
@@ -63,8 +66,8 @@ function buildAchievements(a: Analytics): Achievement[] {
     },
     {
       id: 'organiser',
-      title: 'Organiser',
-      caption: 'Schedule 5 classes',
+      title: t('studyStats.achievements.organiser.title'),
+      caption: t('studyStats.achievements.organiser.caption'),
       icon: 'calendar-outline',
       colorKey: 'blue',
       progress: ratio(a.classes.count, 5),
@@ -72,8 +75,8 @@ function buildAchievements(a: Analytics): Achievement[] {
     },
     {
       id: 'finisher',
-      title: 'Finisher',
-      caption: 'Complete 25 tasks',
+      title: t('studyStats.achievements.finisher.title'),
+      caption: t('studyStats.achievements.finisher.caption'),
       icon: 'checkmark-done-outline',
       colorKey: 'primary',
       progress: ratio(a.tasks.done, 25),
@@ -81,8 +84,8 @@ function buildAchievements(a: Analytics): Achievement[] {
     },
     {
       id: 'habitual',
-      title: 'Habitual',
-      caption: '10-day habit streak',
+      title: t('studyStats.achievements.habitual.title'),
+      caption: t('studyStats.achievements.habitual.caption'),
       icon: 'leaf-outline',
       colorKey: 'green',
       progress: ratio(a.habits.longestEver, 10),
@@ -97,13 +100,14 @@ function buildAchievements(a: Analytics): Achievement[] {
 
 export default function StudyStatsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
   const [range, setRange] = useState<Range>(7);
   const a = useAnalytics(range);
 
-  const achievements = useMemo(() => buildAchievements(a), [a]);
+  const achievements = useMemo(() => buildAchievements(t, a), [t, a]);
   const unlockedCount = achievements.filter((x) => x.unlocked).length;
 
   // Totals for the "what made up the number" breakdown.
@@ -134,7 +138,7 @@ export default function StudyStatsScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.5 }]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Statistics</Text>
+          <Text style={styles.headerTitle}>{t('studyStats.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -142,9 +146,9 @@ export default function StudyStatsScreen() {
           <View style={styles.center}>
             <EmptyState
               icon="stats-chart-outline"
-              title="No statistics yet"
-              message="Your study hours, subject breakdown, weekly and monthly trends, achievements and streaks will show up here as you use the app."
-              ctaLabel="Add to Timetable"
+              title={t('studyStats.emptyTitle')}
+              message={t('studyStats.emptyMessage')}
+              ctaLabel={t('tabs.home.addToTimetable')}
               onPress={() => router.push('/add-class')}
             />
           </View>
@@ -160,7 +164,7 @@ export default function StudyStatsScreen() {
                     onPress={() => setRange(r)}
                     style={[styles.segmentItem, active && styles.segmentItemActive]}>
                     <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                      {r} days
+                      {t('studyStats.daysOption', { count: r })}
                     </Text>
                   </Pressable>
                 );
@@ -174,14 +178,14 @@ export default function StudyStatsScreen() {
                 color={Palette.orange}
                 tint={Tint.orange}
                 value={`${a.activeStreak}`}
-                label="Day streak"
+                label={t('studyStats.dayStreakLabel')}
               />
               <StatTile
                 icon="checkmark-done"
                 color={Palette.green}
                 tint={Tint.green}
                 value={`${a.range.total}`}
-                label={`Completed in ${range}d`}
+                label={t('studyStats.completedInDays', { days: range })}
               />
             </View>
             <View style={styles.tileRow}>
@@ -190,23 +194,23 @@ export default function StudyStatsScreen() {
                 color={Palette.blue}
                 tint={Tint.blue}
                 value={formatMinutesTotal(a.classes.weeklyMinutes)}
-                label="Scheduled per week"
+                label={t('studyStats.scheduledPerWeek')}
               />
               <StatTile
                 icon="pie-chart-outline"
                 color={Palette.primary}
                 tint={Tint.primary}
                 value={formatPercent(a.tasks.completionRate)}
-                label="Task completion"
+                label={t('studyStats.taskCompletion')}
               />
             </View>
 
             {/* Trend */}
-            <Text style={styles.sectionLabel}>Trend</Text>
+            <Text style={styles.sectionLabel}>{t('studyStats.trendSection')}</Text>
             <View style={styles.card}>
               <View style={styles.cardHead}>
-                <Text style={styles.cardTitle}>{range}-day activity</Text>
-                <Text style={styles.cardMeta}>avg {a.range.average.toFixed(1)}/day</Text>
+                <Text style={styles.cardTitle}>{t('studyStats.dayActivity', { days: range })}</Text>
+                <Text style={styles.cardMeta}>{t('studyStats.avgPerDay', { avg: a.range.average.toFixed(1) })}</Text>
               </View>
               {range === 7 ? (
                 <BarChart
@@ -223,35 +227,35 @@ export default function StudyStatsScreen() {
                   <Sparkline values={a.range.series.map((d) => d.total)} height={72} />
                   <View style={styles.sparkAxis}>
                     <Text style={styles.axisText}>{a.range.series[0]?.key.slice(5) ?? ''}</Text>
-                    <Text style={styles.axisText}>Today</Text>
+                    <Text style={styles.axisText}>{t('studyStats.todayAxis')}</Text>
                   </View>
                 </>
               )}
               <Text style={styles.cardFoot}>
                 {a.range.best
-                  ? `Peak: ${a.range.best.total} completed on ${a.range.best.key}`
-                  : 'Nothing completed in this window yet.'}
+                  ? t('studyStats.peakFoot', { count: a.range.best.total, date: a.range.best.key })
+                  : t('studyStats.nothingInWindowFoot')}
               </Text>
             </View>
 
             {/* Breakdown */}
-            <Text style={styles.sectionLabel}>Breakdown</Text>
+            <Text style={styles.sectionLabel}>{t('studyStats.breakdownSection')}</Text>
             <View style={styles.card}>
               <LegendRow
                 color={Palette.green}
-                label="Tasks"
+                label={t('studyStats.tasksLabel')}
                 value={`${mix.tasks}`}
                 progress={mix.tasks / mix.total}
               />
               <LegendRow
                 color={Palette.primary}
-                label="Daily plan items"
+                label={t('backup.included.dailyPlanItems')}
                 value={`${mix.plans}`}
                 progress={mix.plans / mix.total}
               />
               <LegendRow
                 color={Palette.orange}
-                label="Habits hit"
+                label={t('studyStats.habitsHitLabel')}
                 value={`${mix.habits}`}
                 progress={mix.habits / mix.total}
               />
@@ -260,7 +264,7 @@ export default function StudyStatsScreen() {
             {/* Weekly load */}
             {a.classes.weeklyMinutes > 0 ? (
               <>
-                <Text style={styles.sectionLabel}>Weekly load</Text>
+                <Text style={styles.sectionLabel}>{t('tabs.analytics.weeklyLoadSection')}</Text>
                 <View style={styles.card}>
                   <BarChart
                     data={a.classes.perDay.map((m, i) => ({
@@ -272,7 +276,7 @@ export default function StudyStatsScreen() {
                     color={Palette.blue}
                     mutedColor={Tint.blue}
                   />
-                  <Text style={styles.cardFoot}>Hours scheduled each weekday</Text>
+                  <Text style={styles.cardFoot}>{t('studyStats.hoursScheduledFoot')}</Text>
                 </View>
               </>
             ) : null}
@@ -280,15 +284,15 @@ export default function StudyStatsScreen() {
             {/* Subjects */}
             {a.subjects.length > 0 ? (
               <>
-                <Text style={styles.sectionLabel}>Subjects</Text>
+                <Text style={styles.sectionLabel}>{t('tabs.analytics.subjectsSection')}</Text>
                 <View style={styles.card}>
                   {a.subjects.map((s) => (
                     <LegendRow
                       key={s.name}
                       color={s.color}
                       label={s.name}
-                      value={s.minutes > 0 ? formatMinutesTotal(s.minutes) : `${s.taskTotal} tasks`}
-                      caption={s.taskTotal > 0 ? `${s.taskDone}/${s.taskTotal} tasks done` : undefined}
+                      value={s.minutes > 0 ? formatMinutesTotal(s.minutes) : t('tabs.analytics.tasksCount', { count: s.taskTotal })}
+                      caption={s.taskTotal > 0 ? t('tabs.analytics.tasksDoneCaption', { done: s.taskDone, total: s.taskTotal }) : undefined}
                       progress={s.taskTotal ? s.taskDone / s.taskTotal : s.share}
                     />
                   ))}
@@ -298,7 +302,7 @@ export default function StudyStatsScreen() {
 
             {/* Achievements */}
             <Text style={styles.sectionLabel}>
-              Achievements · {unlockedCount}/{achievements.length}
+              {t('studyStats.achievementsSection', { unlocked: unlockedCount, total: achievements.length })}
             </Text>
             <View style={styles.achievementGrid}>
               {achievements.map((ach) => (

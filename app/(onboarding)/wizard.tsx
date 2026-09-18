@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +19,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function WizardScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -42,7 +44,7 @@ export default function WizardScreen() {
 
   const generate = async () => {
     if (!name.trim()) {
-      setNameError('Name is required.');
+      setNameError(t('onboarding.wizard.nameRequired'));
       return;
     }
     setNameError(null);
@@ -59,7 +61,7 @@ export default function WizardScreen() {
       aiGoals: goals.trim(),
     });
     setSaving(false);
-    toast.success('Your planner is ready!');
+    toast.success(t('onboarding.wizard.readyToast'));
     router.replace('/(tabs)');
   };
 
@@ -72,14 +74,14 @@ export default function WizardScreen() {
             <View style={[styles.badge, { backgroundColor: category.tint }]}>
               <Ionicons name={category.icon} size={28} color={category.color} />
             </View>
-            <Text style={styles.title}>Set up your planner</Text>
-            <Text style={styles.subtitle}>A few details so your {category.label.toLowerCase()} planner fits your day.</Text>
+            <Text style={styles.title}>{t('onboarding.wizard.title')}</Text>
+            <Text style={styles.subtitle}>{t('onboarding.wizard.subtitle', { category: category.label.toLowerCase() })}</Text>
 
-            <TextField label="Name" value={name} onChangeText={setName} placeholder="Your name" icon="person-outline" autoCapitalize="words" error={nameError} />
-            <TextField label="Country" value={country} onChangeText={setCountry} placeholder="e.g. Pakistan" icon="flag-outline" autoCapitalize="words" />
-            <TextField label="Timezone" value={timezone} onChangeText={setTimezone} placeholder="e.g. GMT+5" icon="globe-outline" />
+            <TextField label={t('common.name')} value={name} onChangeText={setName} placeholder={t('onboarding.wizard.namePlaceholder')} icon="person-outline" autoCapitalize="words" error={nameError} />
+            <TextField label={t('onboarding.wizard.countryLabel')} value={country} onChangeText={setCountry} placeholder={t('onboarding.wizard.countryPlaceholder')} icon="flag-outline" autoCapitalize="words" />
+            <TextField label={t('onboarding.wizard.timezoneLabel')} value={timezone} onChangeText={setTimezone} placeholder={t('onboarding.wizard.timezonePlaceholder')} icon="globe-outline" />
 
-            <Text style={styles.groupLabel}>Working Days</Text>
+            <Text style={styles.groupLabel}>{t('onboarding.wizard.workingDaysLabel')}</Text>
             <View style={styles.daysRow}>
               {DAYS.map((d) => {
                 const on = days.includes(d);
@@ -92,24 +94,30 @@ export default function WizardScreen() {
             </View>
 
             {/* Times use the circular clock picker; only real counts stay as steppers. */}
-            <TimeRow label="Wake Time" icon="sunny-outline" value={wake} onChange={setWake} />
-            <TimeRow label="Sleep Time" icon="moon-outline" value={sleep} onChange={setSleep} />
-            <Stepper label="Working Hours" icon="briefcase-outline" display={`${workingHours} h`} onDec={() => setWorkingHours((v) => Math.max(1, v - 1))} onInc={() => setWorkingHours((v) => Math.min(16, v + 1))} />
-            <TimeRow label="Daily Reminder Time" icon="notifications-outline" value={reminder} onChange={setReminder} />
+            <TimeRow label={t('onboarding.wizard.wakeTimeLabel')} icon="sunny-outline" value={wake} onChange={setWake} />
+            <TimeRow label={t('onboarding.wizard.sleepTimeLabel')} icon="moon-outline" value={sleep} onChange={setSleep} />
+            <Stepper
+              label={t('onboarding.wizard.workingHoursLabel')}
+              icon="briefcase-outline"
+              display={t('onboarding.wizard.hoursDisplay', { hours: workingHours })}
+              onDec={() => setWorkingHours((v) => Math.max(1, v - 1))}
+              onInc={() => setWorkingHours((v) => Math.min(16, v + 1))}
+            />
+            <TimeRow label={t('onboarding.wizard.reminderTimeLabel')} icon="notifications-outline" value={reminder} onChange={setReminder} />
 
-            <Text style={styles.groupLabel}>AI Goals</Text>
+            <Text style={styles.groupLabel}>{t('onboarding.wizard.aiGoalsLabel')}</Text>
             <View style={styles.goalsBox}>
               <TextInput
                 value={goals}
                 onChangeText={setGoals}
-                placeholder="e.g. Stay consistent, finish projects on time, study 2h daily…"
+                placeholder={t('onboarding.wizard.goalsPlaceholder')}
                 placeholderTextColor={Palette.subtle}
                 multiline
                 style={styles.goalsInput}
               />
             </View>
 
-            <Button title="Generate My Planner" icon="sparkles" onPress={generate} loading={saving} style={styles.cta} />
+            <Button title={t('onboarding.wizard.generateButton')} icon="sparkles" onPress={generate} loading={saving} style={styles.cta} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

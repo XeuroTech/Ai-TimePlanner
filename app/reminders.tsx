@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,16 +38,22 @@ import { useThemeStore } from '@/store/theme-store';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+type TFn = ReturnType<typeof useTranslation>['t'];
+
 /** Common nudge times, so the usual case is one tap rather than a dial drag. */
-const PRESETS = [
-  { label: 'Morning', minutes: 8 * 60 },
-  { label: 'Midday', minutes: 12 * 60 },
-  { label: 'Evening', minutes: 20 * 60 },
-];
+function getPresets(t: TFn): { label: string; minutes: number }[] {
+  return [
+    { label: t('reminders.presets.morning'), minutes: 8 * 60 },
+    { label: t('reminders.presets.midday'), minutes: 12 * 60 },
+    { label: t('reminders.presets.evening'), minutes: 20 * 60 },
+  ];
+}
 
 export default function RemindersScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
+  const PRESETS = useMemo(() => getPresets(t), [t]);
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
@@ -117,7 +124,7 @@ export default function RemindersScreen() {
   const onToggleDaily = async (on: boolean) => {
     setDailyOn(on);
     await persistDaily(on, time);
-    toast.success(on ? `Daily nudge set for ${formatTime(time)}.` : 'Daily nudge turned off.');
+    toast.success(on ? t('reminders.dailyNudgeSetToast', { time: formatTime(time) }) : t('reminders.dailyNudgeOffToast'));
   };
 
   const onTimeChange = (minutes: number) => {
@@ -132,10 +139,10 @@ export default function RemindersScreen() {
         const next = await requestNotificationPermission();
         setPermission(next);
         if (next !== 'granted') {
-          toast.show('Notifications are blocked. Enable them in system settings.', 'error');
+          toast.show(t('common.notificationsBlockedToast'), 'error');
         }
       } catch {
-        toast.show('Notifications are not available on this device.', 'error');
+        toast.show(t('reminders.notAvailableToast'), 'error');
       }
     }
     await refresh();
@@ -145,12 +152,12 @@ export default function RemindersScreen() {
     try {
       const ok = await sendTestNotification();
       if (ok) {
-        toast.success('Test reminder scheduled — arriving in about 5 seconds.');
+        toast.success(t('reminders.testScheduledToast'));
       } else {
-        toast.show('Could not schedule the test reminder.', 'error');
+        toast.show(t('common.testReminderFailedToast'), 'error');
       }
     } catch {
-      toast.show('Could not schedule the test reminder.', 'error');
+      toast.show(t('common.testReminderFailedToast'), 'error');
     }
   };
 
@@ -172,9 +179,9 @@ export default function RemindersScreen() {
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Reminders</Text>
+            <Text style={styles.headerTitle}>{t('reminders.title')}</Text>
             <Text style={styles.headerSub}>
-              {notificationsEnabled ? `${totalScheduled} scheduled` : 'Turned off'}
+              {notificationsEnabled ? t('reminders.scheduledCount', { count: totalScheduled }) : t('reminders.turnedOff')}
             </Text>
           </View>
           <Pressable
@@ -193,7 +200,7 @@ export default function RemindersScreen() {
               style={({ pressed }) => [styles.warning, pressed && styles.pressed]}>
               <Ionicons name="warning-outline" size={18} color="#E5484D" />
               <Text style={styles.warningText}>
-                Notification permission is not granted, so nothing will be delivered. Tap to request it.
+                {t('reminders.permissionWarning')}
               </Text>
             </Pressable>
           ) : null}
@@ -204,8 +211,8 @@ export default function RemindersScreen() {
               <Ionicons name="notifications" size={20} color={Palette.primary} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>All reminders</Text>
-              <Text style={styles.rowSub}>Master switch for classes, plans and the daily nudge</Text>
+              <Text style={styles.rowTitle}>{t('reminders.allRemindersTitle')}</Text>
+              <Text style={styles.rowSub}>{t('reminders.allRemindersSub')}</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -216,15 +223,15 @@ export default function RemindersScreen() {
           </View>
 
           {/* Daily nudge */}
-          <Text style={styles.sectionLabel}>Daily plan nudge</Text>
+          <Text style={styles.sectionLabel}>{t('reminders.dailyNudgeSection')}</Text>
           <View style={styles.card}>
             <View style={[styles.rowIcon, { backgroundColor: Tint.orange }]}>
               <Ionicons name="sunny-outline" size={20} color={Palette.orange} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>Remind me to plan my day</Text>
+              <Text style={styles.rowTitle}>{t('reminders.remindMeTitle')}</Text>
               <Text style={styles.rowSub}>
-                {dailyOn ? `Every day at ${formatTime(time)}` : 'Off'}
+                {dailyOn ? t('reminders.everyDayAt', { time: formatTime(time) }) : t('reminders.off')}
               </Text>
             </View>
             <Switch
@@ -239,8 +246,8 @@ export default function RemindersScreen() {
           {dailyOn ? (
             <View style={styles.timeCard}>
               <ClockTimeField
-                label="Nudge time"
-                title="Daily reminder"
+                label={t('reminders.nudgeTimeLabel')}
+                title={t('reminders.dailyReminderTitle')}
                 value={time}
                 onChange={onTimeChange}
                 minuteStep={5}
@@ -265,15 +272,15 @@ export default function RemindersScreen() {
           ) : null}
 
           {/* What's scheduled */}
-          <Text style={styles.sectionLabel}>Class reminders</Text>
+          <Text style={styles.sectionLabel}>{t('reminders.classRemindersSection')}</Text>
           {activeClasses.length === 0 ? (
             <View style={styles.cardPlain}>
               <EmptyState
                 compact
                 icon="book-outline"
-                title="No class reminders"
-                message="Pick a reminder time when you add a class and it will show up here."
-                ctaLabel="Add to Timetable"
+                title={t('reminders.noClassRemindersTitle')}
+                message={t('reminders.noClassRemindersMessage')}
+                ctaLabel={t('tabs.home.addToTimetable')}
                 onPress={() => router.push('/add-class')}
               />
             </View>
@@ -299,15 +306,15 @@ export default function RemindersScreen() {
             </View>
           )}
 
-          <Text style={styles.sectionLabel}>Upcoming plan reminders</Text>
+          <Text style={styles.sectionLabel}>{t('reminders.upcomingPlanSection')}</Text>
           {upcomingPlans.length === 0 ? (
             <View style={styles.cardPlain}>
               <EmptyState
                 compact
                 icon="today-outline"
-                title="Nothing planned"
-                message="Daily-plan items are reminded at their exact time automatically."
-                ctaLabel="Open Daily Plan"
+                title={t('reminders.nothingPlannedTitle')}
+                message={t('reminders.nothingPlannedMessage')}
+                ctaLabel={t('reminders.openDailyPlanCta')}
                 onPress={() => router.push('/daily-plan')}
               />
             </View>
@@ -337,17 +344,21 @@ export default function RemindersScreen() {
             onPress={() => void onSendTest()}
             style={({ pressed }) => [styles.testButton, pressed && styles.pressed]}>
             <Ionicons name="paper-plane-outline" size={18} color={Palette.primary} />
-            <Text style={styles.testButtonText}>Send a test notification</Text>
+            <Text style={styles.testButtonText}>{t('common.sendTestNotification')}</Text>
           </Pressable>
 
           {/* Engine readout — proves the schedule was rebuilt. */}
           {summary ? (
             <Text style={styles.footnote}>
               {summary.enabled
-                ? `Scheduled now: ${summary.classReminders} class · ${summary.planReminders} plan · ${summary.dailyReminders} daily`
+                ? t('reminders.scheduledNowFootnote', {
+                    classCount: summary.classReminders,
+                    planCount: summary.planReminders,
+                    dailyCount: summary.dailyReminders,
+                  })
                 : summary.reason === 'no-permission'
-                  ? 'Reminders are paused because permission is not granted.'
-                  : 'Reminders are turned off.'}
+                  ? t('reminders.pausedNoPermission')
+                  : t('reminders.turnedOffFootnote')}
             </Text>
           ) : null}
         </ScrollView>

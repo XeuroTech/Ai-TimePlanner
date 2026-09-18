@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,13 @@ import { type InboxItem, useMyNotifications, useNotificationStore } from '@/stor
 type IoniconName = keyof typeof Ionicons.glyphMap;
 type Group = 'Today' | 'Yesterday' | 'Earlier';
 const GROUP_ORDER: Group[] = ['Today', 'Yesterday', 'Earlier'];
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function groupLabel(t: TFn, group: Group): string {
+  if (group === 'Today') return t('notifications.groups.today');
+  if (group === 'Yesterday') return t('notifications.groups.yesterday');
+  return t('notifications.groups.earlier');
+}
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -46,6 +54,7 @@ function timeLabel(at: number, group: Group): string {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
@@ -67,30 +76,30 @@ export default function NotificationsScreen() {
     try {
       const ok = await sendTestNotification();
       if (ok) {
-        toast.success('Test notification scheduled — it will arrive in about 5 seconds.');
+        toast.success(t('notifications.testScheduledToast'));
         return;
       }
       const diag = await getNotificationDiagnostics();
       if (diag.permission === 'granted') {
         toast.show(
-          'Permission is granted but the reminder could not be scheduled. Try again in a moment.',
+          t('notifications.permissionGrantedButFailedToast'),
           'error',
         );
       } else if (diag.permission === 'denied' && !diag.canAskAgain) {
-        toast.show('Notifications are blocked. Enable them in system settings.', 'error');
+        toast.show(t('common.notificationsBlockedToast'), 'error');
       } else {
-        toast.show('Notification permission is not granted yet.', 'error');
+        toast.show(t('notifications.permissionNotGrantedToast'), 'error');
       }
     } catch {
-      toast.show('Could not schedule the test reminder.', 'error');
+      toast.show(t('common.testReminderFailedToast'), 'error');
     }
   };
 
   const onClearAll = () => {
     if (items.length === 0) return;
-    Alert.alert('Clear all notifications', 'This removes every notification from your inbox.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear all', style: 'destructive', onPress: clear },
+    Alert.alert(t('notifications.clearAllTitle'), t('notifications.clearAllMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('notifications.clearAllAction'), style: 'destructive', onPress: clear },
     ]);
   };
 
@@ -118,8 +127,8 @@ export default function NotificationsScreen() {
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            {unread > 0 ? <Text style={styles.headerSub}>{unread} unread</Text> : null}
+            <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
+            {unread > 0 ? <Text style={styles.headerSub}>{t('notifications.unreadCount', { count: unread })}</Text> : null}
           </View>
           <View style={styles.headerActions}>
             <Pressable
@@ -143,9 +152,9 @@ export default function NotificationsScreen() {
               <Ionicons name="paper-plane-outline" size={20} color={Palette.primary} />
             </View>
             <View style={styles.body}>
-              <Text style={styles.title}>Send a test notification</Text>
+              <Text style={styles.title}>{t('common.sendTestNotification')}</Text>
               <Text style={styles.message} numberOfLines={2}>
-                See what a reminder looks like on this device.
+                {t('notifications.testCardMessage')}
               </Text>
             </View>
           </Pressable>
@@ -153,8 +162,8 @@ export default function NotificationsScreen() {
           {items.length === 0 ? (
             <EmptyState
               icon="notifications-off-outline"
-              title="No notifications yet"
-              message="Reminders for your classes, plans and daily check-in will show up here."
+              title={t('notifications.emptyTitle')}
+              message={t('notifications.emptyMessage')}
             />
           ) : null}
           {GROUP_ORDER.map((group) => {
@@ -162,7 +171,7 @@ export default function NotificationsScreen() {
             if (groupItems.length === 0) return null;
             return (
               <View key={group}>
-                <Text style={styles.groupLabel}>{group}</Text>
+                <Text style={styles.groupLabel}>{groupLabel(t, group)}</Text>
                 {groupItems.map((n) => {
                   const look = decorate(n);
                   return (

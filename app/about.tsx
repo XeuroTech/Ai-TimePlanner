@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,12 +15,13 @@ type Row = { id: string; label: string; icon: IoniconName; onPress: () => void }
 
 export default function AboutScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
 
   const LEGAL: Row[] = [
-    { id: 'privacy', label: 'Privacy Policy', icon: 'shield-checkmark-outline', onPress: () => router.push('/privacy-policy') },
-    { id: 'terms', label: 'Terms & Conditions', icon: 'document-text-outline', onPress: () => router.push('/terms') },
+    { id: 'privacy', label: t('about.privacyPolicy'), icon: 'shield-checkmark-outline', onPress: () => router.push('/privacy-policy') },
+    { id: 'terms', label: t('settings.items.terms'), icon: 'document-text-outline', onPress: () => router.push('/terms') },
   ];
 
   const CONTACT: Row[] = [
@@ -53,7 +55,7 @@ export default function AboutScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>About</Text>
+          <Text style={styles.headerTitle}>{t('about.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -62,19 +64,19 @@ export default function AboutScreen() {
             <View style={styles.appIcon}>
               <Ionicons name="calendar" size={36} color="#FFFFFF" />
             </View>
-            <Text style={styles.appName}>Smart Planner</Text>
-            <Text style={styles.appTagline}>AI Timetable & Study Planner</Text>
-            <Text style={styles.appVersion}>Version 1.0.0</Text>
+            <Text style={styles.appName}>{t('splash.logo')}</Text>
+            <Text style={styles.appTagline}>{t('about.tagline')}</Text>
+            <Text style={styles.appVersion}>{t('about.version')}</Text>
           </View>
 
-          <Text style={styles.sectionLabel}>Legal</Text>
+          <Text style={styles.sectionLabel}>{t('about.legalSection')}</Text>
           <View style={styles.card}>{LEGAL.map((r, i) => renderRow(r, i === LEGAL.length - 1))}</View>
 
-          <Text style={styles.sectionLabel}>Contact</Text>
+          <Text style={styles.sectionLabel}>{t('about.contactSection')}</Text>
           <View style={styles.card}>{CONTACT.map((r, i) => renderRow(r, i === CONTACT.length - 1))}</View>
 
-          <Text style={styles.footnote}>Made with care for students, professionals and everyone in between.</Text>
-          <Text style={styles.copyright}>© {new Date().getFullYear()} {COMPANY_NAME}. All rights reserved.</Text>
+          <Text style={styles.footnote}>{t('about.footnote')}</Text>
+          <Text style={styles.copyright}>{t('about.copyright', { year: new Date().getFullYear(), company: COMPANY_NAME })}</Text>
         </ScrollView>
       </SafeAreaView>
     </View>

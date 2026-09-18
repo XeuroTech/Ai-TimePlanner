@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const login = useAuthStore((s) => s.login);
   const sendVerificationEmail = useAuthStore((s) => s.sendVerificationEmail);
@@ -37,19 +39,19 @@ export default function LoginScreen() {
    */
   const resendVerification = async () => {
     const res = await sendVerificationEmail();
-    if (res.ok) toast.success('Verification email sent. Check your inbox and spam folder.');
+    if (res.ok) toast.success(t('auth.login.verificationSentToast'));
     else toast.error(res.error);
   };
 
   const promptForVerification = () => {
     Alert.alert(
-      'Verify your email',
-      `We need to confirm ${email.trim()} belongs to you. Open the verification link we emailed you, then continue.`,
+      t('auth.login.verifyEmailAlertTitle'),
+      t('auth.login.verifyEmailAlertMessage', { email: email.trim() }),
       [
         // `onPress` is sync, so the async resend is fired and left to report
         // itself through the toast.
-        { text: 'Resend Email', onPress: () => void resendVerification() },
-        { text: 'Continue', style: 'cancel', onPress: () => router.replace('/verify-email') },
+        { text: t('auth.login.resendEmailAction'), onPress: () => void resendVerification() },
+        { text: t('auth.login.continueAction'), style: 'cancel', onPress: () => router.replace('/verify-email') },
       ],
       { cancelable: true, onDismiss: () => router.replace('/verify-email') },
     );
@@ -66,11 +68,11 @@ export default function LoginScreen() {
       if (res.emailVerified === false) {
         promptForVerification();
       } else {
-        toast.success('Welcome back!');
+        toast.success(t('auth.login.welcomeBackToast'));
         goNext(!!res.onboarded);
       }
     } else {
-      toast.error(res.error ?? 'Login failed.');
+      toast.error(res.error ?? t('auth.login.loginFailedFallback'));
     }
   };
 
@@ -87,16 +89,16 @@ export default function LoginScreen() {
             <View style={styles.logo}>
               <Ionicons name="calendar-clear" size={26} color="#FFFFFF" />
             </View>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to continue planning smarter.</Text>
+            <Text style={styles.title}>{t('auth.login.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
 
             <View style={styles.form}>
-              <TextField label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" icon="mail-outline" keyboardType="email-address" error={errors.email} />
+              <TextField label={t('common.email')} value={email} onChangeText={setEmail} placeholder={t('common.emailPlaceholder')} icon="mail-outline" keyboardType="email-address" error={errors.email} />
               <TextField
-                label="Password"
+                label={t('common.password')}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Your password"
+                placeholder={t('auth.login.passwordPlaceholder')}
                 icon="lock-closed-outline"
                 secure
                 error={errors.password}
@@ -109,20 +111,20 @@ export default function LoginScreen() {
                   <View style={[styles.checkbox, remember && styles.checkboxOn]}>
                     {remember ? <Ionicons name="checkmark" size={13} color="#FFFFFF" /> : null}
                   </View>
-                  <Text style={styles.rememberText}>Remember me</Text>
+                  <Text style={styles.rememberText}>{t('auth.login.rememberMe')}</Text>
                 </Pressable>
                 <Pressable hitSlop={8} onPress={() => router.push('/forgot-password')}>
-                  <Text style={styles.link}>Forgot password?</Text>
+                  <Text style={styles.link}>{t('auth.login.forgotPassword')}</Text>
                 </Pressable>
               </View>
 
-              <Button title="Log In" onPress={submit} loading={loading} style={styles.cta} />
+              <Button title={t('auth.login.cta')} onPress={submit} loading={loading} style={styles.cta} />
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Text style={styles.footerText}>{t('auth.login.footerText')}</Text>
               <Pressable hitSlop={8} onPress={() => router.replace('/register')}>
-                <Text style={styles.footerLink}>Sign up</Text>
+                <Text style={styles.footerLink}>{t('auth.login.footerLink')}</Text>
               </Pressable>
             </View>
           </ScrollView>

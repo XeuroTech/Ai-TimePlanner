@@ -13,6 +13,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppPalette, FontFamily } from '@/constants/palette';
@@ -129,6 +130,7 @@ function ColorSheet({
   onCancel: () => void;
   onConfirm: (hex: string) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette), [Palette]);
 
@@ -152,11 +154,11 @@ function ColorSheet({
   return (
     <Pressable style={styles.backdrop} onPress={onCancel}>
       <Pressable style={styles.sheet} onPress={() => {}}>
-        <Text style={styles.sheetTitle}>Custom color</Text>
+        <Text style={styles.sheetTitle}>{t('colorPicker.title')}</Text>
 
         <View style={[styles.preview, { backgroundColor: hex }]} />
 
-        <Text style={styles.pickerLabel}>Hue</Text>
+        <Text style={styles.pickerLabel}>{t('colorPicker.hue')}</Text>
         <View style={styles.strip}>
           {Array.from({ length: HUE_STEPS }, (_, i) => (i * 360) / HUE_STEPS).map((h) => {
             const swatch = hslToHex(h, 75, 55);
@@ -173,7 +175,7 @@ function ColorSheet({
           })}
         </View>
 
-        <Text style={styles.pickerLabel}>Shade</Text>
+        <Text style={styles.pickerLabel}>{t('colorPicker.shade')}</Text>
         <View style={styles.strip}>
           {shades.map((s) => (
             <Pressable
@@ -184,7 +186,7 @@ function ColorSheet({
           ))}
         </View>
 
-        <Text style={styles.pickerLabel}>Hex</Text>
+        <Text style={styles.pickerLabel}>{t('colorPicker.hex')}</Text>
         <View style={styles.hexRow}>
           <Text style={styles.hexHash}>#</Text>
           <TextInput
@@ -203,13 +205,13 @@ function ColorSheet({
 
         <View style={styles.actions}>
           <Pressable onPress={onCancel} style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
-            <Text style={styles.ghostText}>Cancel</Text>
+            <Text style={styles.ghostText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => onConfirm(hex)}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.primaryPressed]}>
-            <Text style={styles.primaryText}>Use color</Text>
+            <Text style={styles.primaryText}>{t('colorPicker.useColor')}</Text>
           </Pressable>
         </View>
       </Pressable>

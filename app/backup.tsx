@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -47,17 +48,19 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
  * asked) and absolute after, because "17 days ago" is harder to act on than a
  * date.
  */
-function formatWhen(value: number | string | null | undefined): string {
-  if (value === null || value === undefined) return 'Never';
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function formatWhen(t: TFn, value: number | string | null | undefined): string {
+  if (value === null || value === undefined) return t('backup.never');
   const ms = typeof value === 'number' ? value : Date.parse(value);
-  if (!Number.isFinite(ms)) return 'Never';
+  if (!Number.isFinite(ms)) return t('backup.never');
 
   const diff = Date.now() - ms;
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  if (minutes < 1) return t('backup.justNow');
+  if (minutes < 60) return t('backup.minutesAgo', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return t('backup.hoursAgo', { count: hours });
 
   const d = new Date(ms);
   const date = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -78,6 +81,7 @@ function formatSize(bytes: number | undefined): string | null {
 
 export default function BackupScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -126,34 +130,32 @@ export default function BackupScreen() {
       return;
     }
     const res = await connectDrive();
-    if (res.ok) toast.show('Google Drive connected.', 'success');
+    if (res.ok) toast.show(t('backup.connectedToast'), 'success');
     else if (res.error) toast.show(res.error, 'error');
   };
 
   const onBackup = async () => {
     if (!signedIn) {
-      toast.show('Sign in to your Smart Planner account first.', 'error');
+      toast.show(t('backup.signInFirstToast'), 'error');
       return;
     }
     const res = await backupNow();
-    if (res.ok) toast.show('Backup saved to your Google Drive.', 'success');
+    if (res.ok) toast.show(t('backup.backupSavedToast'), 'success');
     else if (res.error) toast.show(res.error, 'error');
   };
 
   const onRestore = () => {
     Alert.alert(
-      'Restore from cloud',
-      'This replaces the timetable, tasks, habits, chats and settings on this ' +
-        'device with the copy stored in your Google Drive. Anything you added ' +
-        'here since the last backup will be lost.',
+      t('backup.restoreTitle'),
+      t('backup.restoreMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: t('backup.restoreAction'),
           style: 'destructive',
           onPress: async () => {
             const res = await restoreNow();
-            if (res.ok) toast.show('Your data has been restored.', 'success');
+            if (res.ok) toast.show(t('backup.restoredToast'), 'success');
             else if (res.error) toast.show(res.error, 'error');
           },
         },
@@ -163,16 +165,16 @@ export default function BackupScreen() {
 
   const onDeleteCloud = () => {
     Alert.alert(
-      'Delete cloud backup',
-      'The backup file in your Google Drive will be deleted. The data on this device is not touched.',
+      t('backup.deleteCloudTitle'),
+      t('backup.deleteCloudMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             const res = await deleteCloudBackup();
-            if (res.ok) toast.show('Cloud backup deleted.', 'success');
+            if (res.ok) toast.show(t('backup.cloudDeletedToast'), 'success');
             else if (res.error) toast.show(res.error, 'error');
           },
         },
@@ -192,23 +194,22 @@ export default function BackupScreen() {
     try {
       await Linking.openURL(url);
     } catch {
-      toast.show('Could not open Google Drive on this device.', 'error');
+      toast.show(t('backup.openDriveFailedToast'), 'error');
     }
   };
 
   const onDisconnect = () => {
     Alert.alert(
-      'Disconnect Google account',
-      'Smart Planner will stop backing up and will forget your Google account. ' +
-        'The backup already in your Drive is kept.',
+      t('backup.disconnectTitle'),
+      t('backup.disconnectMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Disconnect',
+          text: t('backup.disconnectAction'),
           style: 'destructive',
           onPress: async () => {
             await disconnectDrive();
-            toast.show('Google account disconnected.', 'info');
+            toast.show(t('backup.disconnectedToast'), 'info');
           },
         },
       ],
@@ -220,11 +221,11 @@ export default function BackupScreen() {
   /* ---------------------------------------------------------------------- */
 
   const included: { icon: IoniconName; label: string; count: number; colorKey: string; tintKey: string }[] = [
-    { icon: 'calendar-outline', label: 'Timetable classes', count: classes.length, colorKey: 'primary', tintKey: 'primary' },
-    { icon: 'checkbox-outline', label: 'Tasks', count: tasks.length, colorKey: 'blue', tintKey: 'blue' },
-    { icon: 'today-outline', label: 'Daily plan items', count: plans.length, colorKey: 'green', tintKey: 'green' },
-    { icon: 'flame-outline', label: 'Habits & history', count: habits.length, colorKey: 'pink', tintKey: 'pink' },
-    { icon: 'chatbubbles-outline', label: 'AI chats', count: cloud?.summary?.chats ?? 0, colorKey: 'orange', tintKey: 'orange' },
+    { icon: 'calendar-outline', label: t('backup.included.timetableClasses'), count: classes.length, colorKey: 'primary', tintKey: 'primary' },
+    { icon: 'checkbox-outline', label: t('backup.included.tasks'), count: tasks.length, colorKey: 'blue', tintKey: 'blue' },
+    { icon: 'today-outline', label: t('backup.included.dailyPlanItems'), count: plans.length, colorKey: 'green', tintKey: 'green' },
+    { icon: 'flame-outline', label: t('backup.included.habitsHistory'), count: habits.length, colorKey: 'pink', tintKey: 'pink' },
+    { icon: 'chatbubbles-outline', label: t('backup.included.aiChats'), count: cloud?.summary?.chats ?? 0, colorKey: 'orange', tintKey: 'orange' },
   ];
 
   const colorFor = (key: string) => (Palette as unknown as Record<string, string>)[key];
@@ -232,13 +233,13 @@ export default function BackupScreen() {
 
   const phaseLabel =
     phase === 'connecting'
-      ? 'Connecting to Google…'
+      ? t('backup.phase.connecting')
       : phase === 'backing-up'
-        ? 'Uploading your data…'
+        ? t('backup.phase.backingUp')
         : phase === 'restoring'
-          ? 'Restoring your data…'
+          ? t('backup.phase.restoring')
           : phase === 'checking'
-            ? 'Checking your Drive…'
+            ? t('backup.phase.checking')
             : null;
 
   return (
@@ -253,7 +254,7 @@ export default function BackupScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Backup & Sync</Text>
+          <Text style={styles.headerTitle}>{t('backup.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -276,27 +277,27 @@ export default function BackupScreen() {
               />
             </View>
             <Text style={styles.heroTitle}>
-              {connected ? 'Google Drive connected' : 'Not connected'}
+              {connected ? t('backup.connectedTitle') : t('backup.notConnectedTitle')}
             </Text>
             <Text style={styles.heroSub}>
               {connected
-                ? connectedEmail ?? 'Signed in with Google'
-                : 'Save your timetable, tasks and habits to your own Google Drive so you can get them back on any phone.'}
+                ? connectedEmail ?? t('backup.signedInWithGoogle')
+                : t('backup.notConnectedSub')}
             </Text>
 
             {connected ? (
               <View style={styles.statRow}>
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>Last backup</Text>
-                  <Text style={styles.statValue}>{formatWhen(lastBackupAt)}</Text>
+                  <Text style={styles.statLabel}>{t('backup.lastBackupLabel')}</Text>
+                  <Text style={styles.statValue}>{formatWhen(t, lastBackupAt)}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>In Drive</Text>
+                  <Text style={styles.statLabel}>{t('backup.inDriveLabel')}</Text>
                   <Text style={styles.statValue}>
                     {cloud
-                      ? formatSize(cloud.size) ?? formatWhen(cloud.modifiedTime)
-                      : 'No backup yet'}
+                      ? formatSize(cloud.size) ?? formatWhen(t, cloud.modifiedTime)
+                      : t('backup.noBackupYet')}
                   </Text>
                 </View>
               </View>
@@ -319,14 +320,14 @@ export default function BackupScreen() {
             {connected ? (
               <View style={styles.actions}>
                 <Button
-                  title="Back up now"
+                  title={t('backup.backUpNowButton')}
                   icon="cloud-upload-outline"
                   onPress={onBackup}
                   loading={phase === 'backing-up'}
                   disabled={busy}
                 />
                 <Button
-                  title="Restore from cloud"
+                  title={t('backup.restoreTitle')}
                   icon="cloud-download-outline"
                   variant="secondary"
                   onPress={onRestore}
@@ -335,14 +336,14 @@ export default function BackupScreen() {
                 />
                 {!cloud && !busy ? (
                   <Text style={styles.hint}>
-                    Nothing to restore yet — take your first backup above.
+                    {t('backup.nothingToRestoreHint')}
                   </Text>
                 ) : null}
               </View>
             ) : (
               <View style={styles.actions}>
                 <Button
-                  title="Connect Google Drive"
+                  title={t('backup.connectButton')}
                   icon="logo-google"
                   onPress={onConnect}
                   loading={phase === 'connecting'}
@@ -355,16 +356,16 @@ export default function BackupScreen() {
           {/* Auto-sync */}
           {connected ? (
             <>
-              <Text style={styles.sectionLabel}>Sync</Text>
+              <Text style={styles.sectionLabel}>{t('backup.syncSection')}</Text>
               <View style={styles.card}>
                 <View style={styles.row}>
                   <View style={[styles.rowIcon, { backgroundColor: Tint.blue }]}>
                     <Ionicons name="sync-outline" size={20} color={Palette.blue} />
                   </View>
                   <View style={styles.rowText}>
-                    <Text style={styles.rowLabel}>Auto backup</Text>
+                    <Text style={styles.rowLabel}>{t('backup.autoBackupLabel')}</Text>
                     <Text style={styles.rowSub}>
-                      Upload quietly in the background after you make changes
+                      {t('backup.autoBackupSub')}
                     </Text>
                   </View>
                   <Switch
@@ -385,11 +386,11 @@ export default function BackupScreen() {
                     <Ionicons name="refresh-outline" size={20} color={Palette.primary} />
                   </View>
                   <View style={styles.rowText}>
-                    <Text style={styles.rowLabel}>Check cloud backup</Text>
+                    <Text style={styles.rowLabel}>{t('backup.checkCloudLabel')}</Text>
                     <Text style={styles.rowSub}>
                       {cloud?.modifiedTime
-                        ? `Drive copy updated ${formatWhen(cloud.modifiedTime)}`
-                        : 'No backup file found in Drive'}
+                        ? t('backup.driveCopyUpdated', { when: formatWhen(t, cloud.modifiedTime) })
+                        : t('backup.noBackupFileFound')}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />
@@ -405,8 +406,8 @@ export default function BackupScreen() {
                         <Ionicons name="open-outline" size={20} color={Palette.green} />
                       </View>
                       <View style={styles.rowText}>
-                        <Text style={styles.rowLabel}>View in Google Drive</Text>
-                        <Text style={styles.rowSub}>{`Saved in your "${BACKUP_FOLDER_NAME}" folder`}</Text>
+                        <Text style={styles.rowLabel}>{t('backup.viewInDriveLabel')}</Text>
+                        <Text style={styles.rowSub}>{t('backup.savedInFolder', { folder: BACKUP_FOLDER_NAME })}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />
                     </Pressable>
@@ -420,8 +421,8 @@ export default function BackupScreen() {
                         <Ionicons name="time-outline" size={20} color={Palette.green} />
                       </View>
                       <View style={styles.rowText}>
-                        <Text style={styles.rowLabel}>Last restore</Text>
-                        <Text style={styles.rowSub}>{formatWhen(lastRestoreAt)}</Text>
+                        <Text style={styles.rowLabel}>{t('backup.lastRestoreLabel')}</Text>
+                        <Text style={styles.rowSub}>{formatWhen(t, lastRestoreAt)}</Text>
                       </View>
                     </View>
                   </>
@@ -431,7 +432,7 @@ export default function BackupScreen() {
           ) : null}
 
           {/* What gets backed up */}
-          <Text style={styles.sectionLabel}>What gets backed up</Text>
+          <Text style={styles.sectionLabel}>{t('backup.whatGetsBackedUpSection')}</Text>
           <View style={styles.card}>
             {included.map((item, i) => (
               <Fragment key={item.label}>
@@ -447,24 +448,21 @@ export default function BackupScreen() {
             ))}
           </View>
           <Text style={styles.note}>
-            Your profile, preferences and app settings are included too. Passwords are never
-            backed up.
+            {t('backup.note')}
           </Text>
 
           {/* Privacy explainer */}
           <View style={styles.privacy}>
             <Ionicons name="lock-closed-outline" size={18} color={Palette.primary} />
             <Text style={styles.privacyText}>
-              {`The backup is saved as one file in a "${BACKUP_FOLDER_NAME}" folder in your own ` +
-                'Google Drive, so you can open it there any time. Only you can see it — Smart ' +
-                'Planner has no access to the rest of your Drive.'}
+              {t('backup.privacyText', { folder: BACKUP_FOLDER_NAME })}
             </Text>
           </View>
 
           {/* Danger zone */}
           {connected ? (
             <>
-              <Text style={styles.sectionLabel}>Manage</Text>
+              <Text style={styles.sectionLabel}>{t('backup.manageSection')}</Text>
               <View style={styles.card}>
                 <Pressable
                   onPress={onDeleteCloud}
@@ -475,7 +473,7 @@ export default function BackupScreen() {
                     <Ionicons name="trash-outline" size={20} color="#E5484D" />
                   </View>
                   <Text style={[styles.rowLabel, !cloud && styles.rowLabelDim]}>
-                    Delete cloud backup
+                    {t('backup.deleteCloudTitle')}
                   </Text>
                   <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />
                 </Pressable>
@@ -488,14 +486,14 @@ export default function BackupScreen() {
                   <View style={[styles.rowIcon, { backgroundColor: '#FDE7E8' }]}>
                     <Ionicons name="log-out-outline" size={20} color="#E5484D" />
                   </View>
-                  <Text style={styles.rowLabel}>Disconnect Google account</Text>
+                  <Text style={styles.rowLabel}>{t('backup.disconnectTitle')}</Text>
                   <Ionicons name="chevron-forward" size={18} color={Palette.subtle} />
                 </Pressable>
               </View>
             </>
           ) : null}
 
-          <Text style={styles.footer}>Smart Planner · Backup v1</Text>
+          <Text style={styles.footer}>{t('backup.footer')}</Text>
         </ScrollView>
       </SafeAreaView>
     </View>

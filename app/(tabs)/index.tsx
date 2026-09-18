@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   ScrollView,
@@ -34,8 +35,6 @@ function tintFor(color: string): string {
 /* Data — no mock content. Lists start empty and fill from the local store.   */
 /* -------------------------------------------------------------------------- */
 
-const QUOTE = 'A goal without a plan is just a wish.';
-
 type ScheduleItem = {
   id: string;
   /** Sort key: minutes from midnight. */
@@ -62,12 +61,14 @@ function getPriorityStyle(Palette: AppPalette, Tint: AppTint): Record<Priority, 
 
 type QuickAction = { id: string; label: string; icon: IoniconName; color: string; tint: string };
 
-function getQuickActions(Palette: AppPalette, Tint: AppTint): QuickAction[] {
+type TFn = ReturnType<typeof useTranslation>['t'];
+
+function getQuickActions(t: TFn, Palette: AppPalette, Tint: AppTint): QuickAction[] {
   return [
-    { id: 'q1', label: 'Add Class', icon: 'add-circle', color: Palette.primary, tint: Tint.primary },
-    { id: 'q2', label: 'Add Task', icon: 'checkmark-done', color: Palette.green, tint: Tint.green },
-    { id: 'q3', label: 'AI Planner', icon: 'sparkles', color: Palette.pink, tint: Tint.pink },
-    { id: 'q4', label: 'Reminders', icon: 'notifications', color: Palette.blue, tint: Tint.blue },
+    { id: 'q1', label: t('tabs.home.quickActions.addClass'), icon: 'add-circle', color: Palette.primary, tint: Tint.primary },
+    { id: 'q2', label: t('tabs.home.quickActions.addTask'), icon: 'checkmark-done', color: Palette.green, tint: Tint.green },
+    { id: 'q3', label: t('tabs.home.quickActions.aiPlanner'), icon: 'sparkles', color: Palette.pink, tint: Tint.pink },
+    { id: 'q4', label: t('tabs.home.quickActions.reminders'), icon: 'notifications', color: Palette.blue, tint: Tint.blue },
   ];
 }
 
@@ -75,11 +76,11 @@ function getQuickActions(Palette: AppPalette, Tint: AppTint): QuickAction[] {
 /* Helpers                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function getGreeting(date = new Date()): string {
+function getGreeting(t: TFn, date = new Date()): string {
   const h = date.getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (h < 12) return t('tabs.home.greetingMorning');
+  if (h < 17) return t('tabs.home.greetingAfternoon');
+  return t('tabs.home.greetingEvening');
 }
 
 function formatToday(date = new Date()): string {
@@ -93,15 +94,16 @@ function formatToday(date = new Date()): string {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const tabBarSpace = 60 + (insets.bottom > 0 ? insets.bottom : 12);
 
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const PRIORITY_STYLE = useMemo(() => getPriorityStyle(Palette, Tint), [Palette, Tint]);
-  const QUICK_ACTIONS = useMemo(() => getQuickActions(Palette, Tint), [Palette, Tint]);
+  const QUICK_ACTIONS = useMemo(() => getQuickActions(t, Palette, Tint), [t, Palette, Tint]);
 
   const profile = useAuthStore((s) => s.profile);
-  const firstName = profile?.name?.trim().split(' ')[0] || 'there';
+  const firstName = profile?.name?.trim().split(' ')[0] || t('tabs.home.fallbackName');
   const avatarUri = profile?.preferences?.avatarUri;
 
   // Persona-aware wording (e.g. "Add Class" -> "Add Appointment" for a doctor).
@@ -187,9 +189,9 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>
-              {getGreeting()}, {firstName} 👋
+              {getGreeting(t)}, {firstName} 👋
             </Text>
-            <Text style={styles.subGreeting}>{"Let's plan your productive day!"}</Text>
+            <Text style={styles.subGreeting}>{t('tabs.home.subGreeting')}</Text>
           </View>
           <View style={styles.headerRight}>
             <Pressable
@@ -219,7 +221,7 @@ export default function HomeScreen() {
           <View style={styles.quoteIcon}>
             <Ionicons name="sparkles" size={18} color={Palette.primary} />
           </View>
-          <Text style={styles.quoteText}>{`“${QUOTE}”`}</Text>
+          <Text style={styles.quoteText}>{`“${t('tabs.home.quote')}”`}</Text>
         </View>
 
         {/* Daily plan CTA */}
@@ -231,11 +233,11 @@ export default function HomeScreen() {
             <Ionicons name="today" size={22} color="#FFFFFF" />
           </View>
           <View style={styles.planBtnBody}>
-            <Text style={styles.planBtnTitle}>Daily Plan</Text>
+            <Text style={styles.planBtnTitle}>{t('tabs.home.dailyPlanTitle')}</Text>
             <Text style={styles.planBtnSub}>
               {todaysPlans.length > 0
-                ? `${donePlans} of ${todaysPlans.length} done today`
-                : 'Plan your day & add to-dos'}
+                ? t('tabs.home.doneTodayProgress', { done: donePlans, total: todaysPlans.length })
+                : t('tabs.home.dailyPlanEmpty')}
             </Text>
           </View>
           {todaysPlans.length > 0 ? (
@@ -253,15 +255,15 @@ export default function HomeScreen() {
         </Pressable>
 
         {/* Today's schedule */}
-        <SectionHeader title="Today's Schedule" caption={formatToday()} onPress={openSchedule} />
+        <SectionHeader title={t('tabs.home.todaysScheduleTitle')} caption={formatToday()} onPress={openSchedule} />
         <View style={styles.card}>
           {schedule.length === 0 ? (
             <EmptyState
               compact
               icon="calendar-clear-outline"
-              title="Your day is clear"
-              message="Add classes or events to see your schedule here."
-              ctaLabel="Add to Timetable"
+              title={t('tabs.home.scheduleEmptyTitle')}
+              message={t('tabs.home.scheduleEmptyMessage')}
+              ctaLabel={t('tabs.home.addToTimetable')}
               onPress={() => router.push('/add-class')}
             />
           ) : (
@@ -291,7 +293,7 @@ export default function HomeScreen() {
         {/* Habits — a live summary, so the tracker isn't buried in Profile. */}
         {habits.total > 0 ? (
           <>
-            <SectionHeader title="Habits" onPress={() => router.push('/habits')} />
+            <SectionHeader title={t('tabs.home.habitsTitle')} onPress={() => router.push('/habits')} />
             <Pressable
               onPress={() => router.push('/habits')}
               style={({ pressed }) => [styles.habitCard, pressed && styles.pressedCard]}>
@@ -300,11 +302,11 @@ export default function HomeScreen() {
               </ProgressRing>
               <View style={styles.habitBody}>
                 <Text style={styles.habitTitle}>
-                  {habits.done} of {habits.total} done today
+                  {t('tabs.home.doneTodayProgress', { done: habits.done, total: habits.total })}
                 </Text>
                 <View style={styles.habitMeta}>
                   <Ionicons name="flame" size={14} color={Palette.orange} />
-                  <Text style={styles.habitStreak}>{habits.bestStreak} day streak</Text>
+                  <Text style={styles.habitStreak}>{t('tabs.home.dayStreak', { count: habits.bestStreak })}</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Palette.subtle} />
@@ -313,15 +315,15 @@ export default function HomeScreen() {
         ) : null}
 
         {/* Upcoming tasks */}
-        <SectionHeader title="Upcoming Tasks" onPress={openTasks} />
+        <SectionHeader title={t('tabs.home.upcomingTasksTitle')} onPress={openTasks} />
         <View style={styles.card}>
           {upcoming.length === 0 ? (
             <EmptyState
               compact
               icon="checkbox-outline"
-              title="No upcoming tasks"
-              message="Create a task to stay on top of your day."
-              ctaLabel="Add Task"
+              title={t('tabs.home.noUpcomingTasksTitle')}
+              message={t('tabs.home.noUpcomingTasksMessage')}
+              ctaLabel={t('common.addTask')}
               onPress={() => router.push('/add-task')}
             />
           ) : (
@@ -355,7 +357,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Quick actions */}
-        <SectionHeader title="Quick Actions" />
+        <SectionHeader title={t('tabs.home.quickActionsTitle')} />
         <View style={styles.actionsGrid}>
           {QUICK_ACTIONS.map((a) => (
             <Pressable
@@ -400,6 +402,7 @@ function SectionHeader({
   caption?: string;
   onPress?: () => void;
 }): ReactNode {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   return (
@@ -410,7 +413,7 @@ function SectionHeader({
       </View>
       {onPress ? (
         <Pressable hitSlop={10} onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-          <Text style={styles.seeAll}>See All</Text>
+          <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
         </Pressable>
       ) : null}
     </View>

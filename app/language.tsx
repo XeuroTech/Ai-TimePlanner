@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 export default function LanguageScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -31,7 +33,7 @@ export default function LanguageScreen() {
     setSaving(code);
     await updateProfile({ preferences: { language: code } });
     setSaving(null);
-    toast.success('Language preference saved.');
+    toast.success(t('language.savedToast'));
   };
 
   return (
@@ -45,7 +47,7 @@ export default function LanguageScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Language</Text>
+          <Text style={styles.headerTitle}>{t('language.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -53,12 +55,11 @@ export default function LanguageScreen() {
           <View style={styles.banner}>
             <Ionicons name="information-circle" size={18} color={Palette.primary} />
             <Text style={styles.bannerText}>
-              This saves which language you&apos;d like Smart Planner in. Full in-app translation is on the
-              roadmap — for now the app stays in English while we roll it out.
+              {t('language.banner')}
             </Text>
           </View>
 
-          <Text style={styles.sectionLabel}>Languages on this device</Text>
+          <Text style={styles.sectionLabel}>{t('language.devicesSection')}</Text>
           <View style={styles.card}>
             {languages.map((lang, i) => {
               const active = lang.code === selected;

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -100,17 +101,23 @@ const ICON_CHOICES: IoniconName[] = [
 
 const COLOR_CHOICES: HabitColorKey[] = ['primary', 'blue', 'green', 'orange', 'pink'];
 
+type TFn = ReturnType<typeof useTranslation>['t'];
+
 /** Starting points so a new habit is one tap away from being useful. */
-const TEMPLATES: { name: string; icon: IoniconName; colorKey: HabitColorKey; kind: HabitKind; unit: string; step: number; target: number }[] = [
-  { name: 'Drink water', icon: 'water-outline', colorKey: 'blue', kind: 'counter', unit: 'glasses', step: 1, target: 8 },
-  { name: 'Exercise', icon: 'barbell-outline', colorKey: 'pink', kind: 'counter', unit: 'min', step: 15, target: 30 },
-  { name: 'Read', icon: 'book-outline', colorKey: 'primary', kind: 'counter', unit: 'pages', step: 5, target: 20 },
-  { name: 'Sleep early', icon: 'moon-outline', colorKey: 'orange', kind: 'checkbox', unit: '', step: 1, target: 1 },
-  { name: 'Meditate', icon: 'flower-outline', colorKey: 'green', kind: 'counter', unit: 'min', step: 5, target: 10 },
-  { name: 'Walk', icon: 'walk-outline', colorKey: 'blue', kind: 'counter', unit: 'steps', step: 500, target: 5000 },
-  { name: 'Journal', icon: 'create-outline', colorKey: 'primary', kind: 'checkbox', unit: '', step: 1, target: 1 },
-  { name: 'Take vitamins', icon: 'medkit-outline', colorKey: 'pink', kind: 'checkbox', unit: '', step: 1, target: 1 },
-];
+type HabitTemplate = { name: string; icon: IoniconName; colorKey: HabitColorKey; kind: HabitKind; unit: string; step: number; target: number };
+
+function getTemplates(t: TFn): HabitTemplate[] {
+  return [
+    { name: t('habits.templates.drinkWater'), icon: 'water-outline', colorKey: 'blue', kind: 'counter', unit: 'glasses', step: 1, target: 8 },
+    { name: t('habits.templates.exercise'), icon: 'barbell-outline', colorKey: 'pink', kind: 'counter', unit: 'min', step: 15, target: 30 },
+    { name: t('habits.templates.read'), icon: 'book-outline', colorKey: 'primary', kind: 'counter', unit: 'pages', step: 5, target: 20 },
+    { name: t('habits.templates.sleepEarly'), icon: 'moon-outline', colorKey: 'orange', kind: 'checkbox', unit: '', step: 1, target: 1 },
+    { name: t('habits.templates.meditate'), icon: 'flower-outline', colorKey: 'green', kind: 'counter', unit: 'min', step: 5, target: 10 },
+    { name: t('habits.templates.walk'), icon: 'walk-outline', colorKey: 'blue', kind: 'counter', unit: 'steps', step: 500, target: 5000 },
+    { name: t('habits.templates.journal'), icon: 'create-outline', colorKey: 'primary', kind: 'checkbox', unit: '', step: 1, target: 1 },
+    { name: t('habits.templates.takeVitamins'), icon: 'medkit-outline', colorKey: 'pink', kind: 'checkbox', unit: '', step: 1, target: 1 },
+  ];
+}
 
 type Draft = {
   name: string;
@@ -133,9 +140,9 @@ const BLANK_DRAFT: Draft = {
   target: 1,
 };
 
-function progressText(current: number, target: number, unit: string): string {
-  if (!unit) return current >= target ? 'Completed' : 'Not done';
-  return `${current} / ${target} ${unit}`;
+function progressText(t: TFn, current: number, target: number, unit: string): string {
+  if (!unit) return current >= target ? t('habits.completed') : t('habits.notDone');
+  return t('habits.progressWithUnit', { current, target, unit });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -144,6 +151,7 @@ function progressText(current: number, target: number, unit: string): string {
 
 export default function HabitsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
   const { Palette, Tint, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
@@ -177,7 +185,7 @@ export default function HabitsScreen() {
 
   const openCreate = () => {
     if (atLimit) {
-      toast.show(`Free plan tracks up to ${FREE_HABIT_LIMIT} habits. Upgrade for unlimited.`, 'error');
+      toast.show(t('habits.limitReachedToast', { limit: FREE_HABIT_LIMIT }), 'error');
       router.push('/premium');
       return;
     }
@@ -204,7 +212,7 @@ export default function HabitsScreen() {
   const onSave = () => {
     const name = draft.name.trim();
     if (!name) {
-      toast.show('Give the habit a name.', 'error');
+      toast.show(t('habits.nameRequiredToast'), 'error');
       return;
     }
     // A checkbox habit is always a simple done/not-done tick.
@@ -225,10 +233,10 @@ export default function HabitsScreen() {
     animateNext();
     if (editing) {
       updateHabit(editing.id, payload);
-      toast.success('Habit updated.');
+      toast.success(t('habits.updatedToast'));
     } else {
       addHabit(payload);
-      toast.success('Habit added.');
+      toast.success(t('habits.addedToast'));
     }
     setEditorOpen(false);
   };
@@ -238,14 +246,14 @@ export default function HabitsScreen() {
     animateNext();
     removeHabit(editing.id);
     setEditorOpen(false);
-    toast.success('Habit removed.');
+    toast.success(t('habits.removedToast'));
   };
 
   const confirmDelete = (habit: Habit) => {
-    Alert.alert('Delete habit', `Remove "${habit.name}" and its history? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('habits.deleteTitle'), t('habits.deleteMessage', { name: habit.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           animateNext();
@@ -255,8 +263,8 @@ export default function HabitsScreen() {
     ]);
   };
 
-  const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
-    setDraft({ ...t });
+  const applyTemplate = (tmpl: HabitTemplate) => {
+    setDraft({ ...tmpl });
   };
 
   return (
@@ -271,7 +279,7 @@ export default function HabitsScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Habit Tracker</Text>
+          <Text style={styles.headerTitle}>{t('habits.title')}</Text>
           <Pressable
             hitSlop={10}
             onPress={openCreate}
@@ -284,9 +292,9 @@ export default function HabitsScreen() {
           {rows.length === 0 ? (
             <EmptyState
               icon="leaf-outline"
-              title="No habits yet"
-              message="Add habits like water, exercise or reading, and track your daily streaks here."
-              ctaLabel="Add your first habit"
+              title={t('habits.emptyTitle')}
+              message={t('habits.emptyMessage')}
+              ctaLabel={t('habits.emptyCta')}
               onPress={openCreate}
             />
           ) : (
@@ -296,14 +304,14 @@ export default function HabitsScreen() {
                 <View pointerEvents="none" style={styles.heroBlobTop} />
                 <View pointerEvents="none" style={styles.heroBlobBottom} />
                 <View style={styles.heroText}>
-                  <Text style={styles.heroLabel}>{"Today's Completion"}</Text>
+                  <Text style={styles.heroLabel}>{t('habits.todaysCompletion')}</Text>
                   <Text style={styles.heroBig}>
                     {doneCount}
                     <Text style={styles.heroBigSmall}> / {rows.length}</Text>
                   </Text>
                   <View style={styles.streakChip}>
                     <Ionicons name="flame" size={14} color="#FFFFFF" />
-                    <Text style={styles.streakChipText}>{bestStreak} day streak</Text>
+                    <Text style={styles.streakChipText}>{t('tabs.home.dayStreak', { count: bestStreak })}</Text>
                   </View>
                 </View>
                 <ProgressRing
@@ -317,7 +325,7 @@ export default function HabitsScreen() {
                 </ProgressRing>
               </View>
 
-              <Text style={styles.sectionLabel}>Your Habits</Text>
+              <Text style={styles.sectionLabel}>{t('habits.yourHabits')}</Text>
               {rows.map(({ habit, current, target, done, pct, streak }) => {
                 const l = look(habit.colorKey, habit.customColor);
                 return (
@@ -346,7 +354,7 @@ export default function HabitsScreen() {
                       </Text>
                       <View style={styles.habitMeta}>
                         <Text style={styles.habitProgress}>
-                          {progressText(current, target, habit.unit)}
+                          {progressText(t, current, target, habit.unit)}
                         </Text>
                         <Text style={styles.metaDot}>·</Text>
                         <Ionicons name="flame" size={13} color={Palette.orange} />
@@ -383,7 +391,7 @@ export default function HabitsScreen() {
                 );
               })}
 
-              <Text style={styles.hint}>Tap to log progress · long-press to edit</Text>
+              <Text style={styles.hint}>{t('habits.hint')}</Text>
 
               {atLimit ? (
                 <Pressable
@@ -391,7 +399,7 @@ export default function HabitsScreen() {
                   style={({ pressed }) => [styles.upsell, pressed && styles.pressed]}>
                   <Ionicons name="sparkles" size={16} color={Palette.primary} />
                   <Text style={styles.upsellText}>
-                    Free plan tracks {FREE_HABIT_LIMIT} habits — go premium for unlimited
+                    {t('habits.upsellText', { limit: FREE_HABIT_LIMIT })}
                   </Text>
                 </Pressable>
               ) : null}
@@ -435,10 +443,12 @@ function HabitEditor({
   onClose: () => void;
   onSave: () => void;
   onDelete: () => void;
-  onTemplate: (t: (typeof TEMPLATES)[number]) => void;
+  onTemplate: (tmpl: HabitTemplate) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
+  const TEMPLATES = useMemo(() => getTemplates(t), [t]);
   const patch = (p: Partial<Draft>) => setDraft({ ...draft, ...p });
 
   return (
@@ -450,7 +460,7 @@ function HabitEditor({
           <View style={styles.sheet}>
             <View style={styles.sheetGrabber} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editing ? 'Edit habit' : 'New habit'}</Text>
+              <Text style={styles.sheetTitle}>{editing ? t('habits.editTitle') : t('habits.newTitle')}</Text>
               <Pressable hitSlop={10} onPress={onClose}>
                 <Ionicons name="close" size={22} color={Palette.muted} />
               </Pressable>
@@ -462,37 +472,37 @@ function HabitEditor({
               contentContainerStyle={styles.sheetScroll}>
               {!editing ? (
                 <>
-                  <Text style={styles.fieldLabel}>Quick start</Text>
+                  <Text style={styles.fieldLabel}>{t('habits.quickStart')}</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.templateRow}>
-                    {TEMPLATES.map((t) => (
+                    {TEMPLATES.map((tmpl) => (
                       <Pressable
-                        key={t.name}
-                        onPress={() => onTemplate(t)}
+                        key={tmpl.name}
+                        onPress={() => onTemplate(tmpl)}
                         style={({ pressed }) => [styles.template, pressed && styles.pressed]}>
-                        <Ionicons name={t.icon} size={16} color={Palette.primary} />
-                        <Text style={styles.templateText}>{t.name}</Text>
+                        <Ionicons name={tmpl.icon} size={16} color={Palette.primary} />
+                        <Text style={styles.templateText}>{tmpl.name}</Text>
                       </Pressable>
                     ))}
                   </ScrollView>
                 </>
               ) : null}
 
-              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={styles.fieldLabel}>{t('common.name')}</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   value={draft.name}
                   onChangeText={(v) => patch({ name: v })}
-                  placeholder="e.g. Drink water"
+                  placeholder={t('habits.namePlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                   returnKeyType="done"
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>Type</Text>
+              <Text style={styles.fieldLabel}>{t('habits.typeLabel')}</Text>
               <View style={styles.kindRow}>
                 <Pressable
                   onPress={() => patch({ kind: 'counter' })}
@@ -503,10 +513,10 @@ function HabitEditor({
                     color={draft.kind === 'counter' ? '#FFFFFF' : Palette.muted}
                   />
                   <Text style={[styles.kindOptionText, draft.kind === 'counter' && styles.kindOptionTextActive]}>
-                    Counter
+                    {t('habits.counterLabel')}
                   </Text>
                   <Text style={[styles.kindOptionSub, draft.kind === 'counter' && styles.kindOptionSubActive]}>
-                    Tap adds progress
+                    {t('habits.counterSub')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -518,15 +528,15 @@ function HabitEditor({
                     color={draft.kind === 'checkbox' ? '#FFFFFF' : Palette.muted}
                   />
                   <Text style={[styles.kindOptionText, draft.kind === 'checkbox' && styles.kindOptionTextActive]}>
-                    Checkbox
+                    {t('habits.checkboxLabel')}
                   </Text>
                   <Text style={[styles.kindOptionSub, draft.kind === 'checkbox' && styles.kindOptionSubActive]}>
-                    Done or not done
+                    {t('habits.checkboxSub')}
                   </Text>
                 </Pressable>
               </View>
 
-              <Text style={styles.fieldLabel}>Icon</Text>
+              <Text style={styles.fieldLabel}>{t('habits.iconLabel')}</Text>
               <View style={styles.chipGrid}>
                 {ICON_CHOICES.map((ic) => {
                   const active = ic === draft.icon;
@@ -541,7 +551,7 @@ function HabitEditor({
                 })}
               </View>
 
-              <Text style={styles.fieldLabel}>Color</Text>
+              <Text style={styles.fieldLabel}>{t('addEntry.colorLabel')}</Text>
               <ColorPickerField
                 presets={COLOR_CHOICES.map((key) => ({
                   key,
@@ -555,37 +565,37 @@ function HabitEditor({
 
               {draft.kind === 'counter' ? (
                 <>
-                  <Text style={styles.fieldLabel}>Unit</Text>
+                  <Text style={styles.fieldLabel}>{t('habits.unitLabel')}</Text>
                   <View style={styles.inputWrap}>
                     <TextInput
                       value={draft.unit}
                       onChangeText={(v) => patch({ unit: v })}
-                      placeholder="glasses, min, pages…"
+                      placeholder={t('habits.unitPlaceholder')}
                       placeholderTextColor={Palette.subtle}
                       style={styles.input}
                     />
                   </View>
 
                   <View style={styles.stepperRow}>
-                    <Text style={styles.stepperLabel}>Daily target</Text>
+                    <Text style={styles.stepperLabel}>{t('habits.dailyTargetLabel')}</Text>
                     <NumberStepperField
                       value={draft.target}
                       onChange={(v) => patch({ target: v })}
                       min={1}
                       max={999}
                       unit={draft.unit.trim()}
-                      title="Daily target"
+                      title={t('habits.dailyTargetLabel')}
                     />
                   </View>
                   <View style={styles.stepperRow}>
-                    <Text style={styles.stepperLabel}>Per tap</Text>
+                    <Text style={styles.stepperLabel}>{t('habits.perTapLabel')}</Text>
                     <NumberStepperField
                       value={draft.step}
                       onChange={(v) => patch({ step: v })}
                       min={1}
                       max={100}
                       unit={draft.unit.trim()}
-                      title="Amount added per tap"
+                      title={t('habits.perTapTitle')}
                     />
                   </View>
                 </>
@@ -604,7 +614,7 @@ function HabitEditor({
                 onPress={onSave}
                 android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
                 style={({ pressed }) => [styles.saveBtn, pressed && styles.savePressed]}>
-                <Text style={styles.saveText}>{editing ? 'Save changes' : 'Add habit'}</Text>
+                <Text style={styles.saveText}>{editing ? t('habits.saveChanges') : t('habits.addHabit')}</Text>
               </Pressable>
             </View>
           </View>

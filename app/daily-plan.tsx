@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -76,6 +77,7 @@ function fromDateKey(key: string): Date {
 
 export default function DailyPlanScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   // Opened from Calendar with a specific date, or from the Home/tabs shortcut for today.
   const { date } = useLocalSearchParams<{ date?: string }>();
   const dateKey = date ?? toDateKey();
@@ -103,7 +105,7 @@ export default function DailyPlanScreen() {
 
   const onAdd = () => {
     if (!title.trim()) {
-      setError('Enter something to plan.');
+      setError(t('dailyPlan.emptyTitleError'));
       return;
     }
     setError(null);
@@ -127,7 +129,7 @@ export default function DailyPlanScreen() {
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{isToday ? 'Daily Plan' : 'Day Plan'}</Text>
+            <Text style={styles.headerTitle}>{isToday ? t('dailyPlan.titleToday') : t('dailyPlan.titleOther')}</Text>
             <Text style={styles.headerSub}>{prettyDate(fromDateKey(dateKey))}</Text>
           </View>
           <View style={styles.iconBtn} />
@@ -149,7 +151,7 @@ export default function DailyPlanScreen() {
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
-                  placeholder="What's the plan? e.g. Ward round"
+                  placeholder={t('dailyPlan.titlePlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                   returnKeyType="done"
@@ -160,8 +162,8 @@ export default function DailyPlanScreen() {
               {/* Real circular clock picker */}
               <View style={styles.clockField}>
                 <ClockTimeField
-                  label="Time"
-                  title="Plan time"
+                  label={t('dailyPlan.timeLabel')}
+                  title={t('dailyPlan.timeTitle')}
                   value={time}
                   onChange={setTime}
                   minuteStep={5}
@@ -174,13 +176,13 @@ export default function DailyPlanScreen() {
                 <TextInput
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Note (optional)"
+                  placeholder={t('dailyPlan.notePlaceholder')}
                   placeholderTextColor={Palette.subtle}
                   style={styles.input}
                 />
               </View>
 
-              <Text style={styles.iconLabel}>Icon</Text>
+              <Text style={styles.iconLabel}>{t('dailyPlan.iconLabel')}</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -206,14 +208,14 @@ export default function DailyPlanScreen() {
                 android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
                 style={({ pressed }) => [styles.addBtn, pressed && styles.addPressed]}>
                 <Ionicons name="add" size={20} color="#FFFFFF" />
-                <Text style={styles.addText}>Add to Plan</Text>
+                <Text style={styles.addText}>{t('dailyPlan.addButton')}</Text>
               </Pressable>
             </View>
 
             {/* Progress summary */}
             {plans.length > 0 ? (
               <Text style={styles.summary}>
-                {doneCount} of {plans.length} done
+                {t('dailyPlan.summary', { done: doneCount, total: plans.length })}
               </Text>
             ) : null}
 
@@ -223,8 +225,8 @@ export default function DailyPlanScreen() {
                 <EmptyState
                   compact
                   icon="today-outline"
-                  title="No plans yet"
-                  message="Add your first item above to start planning your day."
+                  title={t('dailyPlan.emptyTitle')}
+                  message={t('dailyPlan.emptyMessage')}
                 />
               </View>
             ) : (

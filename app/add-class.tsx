@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -41,6 +42,7 @@ const todayIndex = (new Date().getDay() + 6) % 7;
 
 export default function AddClassScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { classId } = useLocalSearchParams<{ classId?: string }>();
   const addClass = usePlannerStore((s) => s.addClass);
   const updateClass = usePlannerStore((s) => s.updateClass);
@@ -75,11 +77,11 @@ export default function AddClassScreen() {
 
   const onSave = () => {
     if (!subject.trim()) {
-      setError(`Please enter a ${cfg.subject.label.toLowerCase()}.`);
+      setError(t('addEntry.requiredFieldError', { field: cfg.subject.label.toLowerCase() }));
       return;
     }
     if (end <= start) {
-      setError('End time must be after start time.');
+      setError(t('addEntry.endBeforeStartError'));
       return;
     }
     setError(null);
@@ -111,7 +113,7 @@ export default function AddClassScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>{editing ? `Edit ${cfg.title}` : cfg.title}</Text>
+          <Text style={styles.headerTitle}>{editing ? t('addEntry.editTitle', { title: cfg.title }) : cfg.title}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -138,7 +140,7 @@ export default function AddClassScreen() {
             </Field>
 
             {/* Day */}
-            <Field label="Day">
+            <Field label={t('addEntry.dayLabel')}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -162,8 +164,8 @@ export default function AddClassScreen() {
             <View style={styles.row2}>
               <View style={styles.flex}>
                 <ClockTimeField
-                  label="Start Time"
-                  title="Start time"
+                  label={t('addEntry.startTimeLabel')}
+                  title={t('addEntry.startTimeTitle')}
                   value={start}
                   onChange={(v) => {
                     setStart(v);
@@ -176,8 +178,8 @@ export default function AddClassScreen() {
               <View style={{ width: 14 }} />
               <View style={styles.flex}>
                 <ClockTimeField
-                  label="End Time"
-                  title="End time"
+                  label={t('addEntry.endTimeLabel')}
+                  title={t('addEntry.endTimeTitle')}
                   value={end}
                   onChange={setEnd}
                   minuteStep={5}
@@ -215,17 +217,17 @@ export default function AddClassScreen() {
             </Field>
 
             {/* Reminder */}
-            <Field label="Reminder">
+            <Field label={t('addEntry.reminderLabel')}>
               <ChipSelect options={REMINDER_OPTIONS} value={reminder} onChange={setReminder} icon="notifications-outline" />
             </Field>
 
             {/* Repeat */}
-            <Field label="Repeat">
+            <Field label={t('addEntry.repeatLabel')}>
               <ChipSelect options={REPEAT_OPTIONS} value={repeat} onChange={setRepeat} icon="repeat-outline" />
             </Field>
 
             {/* Color */}
-            <Field label="Color">
+            <Field label={t('addEntry.colorLabel')}>
               <ColorPickerField
                 presets={COLOR_OPTIONS.map((c) => ({ key: c, color: c }))}
                 selectedKey={COLOR_OPTIONS.includes(color) ? color : 'custom'}
@@ -245,7 +247,7 @@ export default function AddClassScreen() {
             onPress={onSave}
             android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
             style={({ pressed }) => [styles.saveBtn, pressed && styles.savePressed]}>
-            <Text style={styles.saveText}>{editing ? 'Save Changes' : cfg.saveLabel}</Text>
+            <Text style={styles.saveText}>{editing ? t('addEntry.saveChanges') : cfg.saveLabel}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

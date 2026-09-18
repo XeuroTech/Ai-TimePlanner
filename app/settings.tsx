@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +23,7 @@ type Item = { id: ItemId; label: string; icon: IoniconName; colorKey: string; ti
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { Palette, Tint, isDark } = useAppTheme();
   const profile = useAuthStore((s) => s.profile);
   const { isPremium } = usePremium();
@@ -30,24 +32,24 @@ export default function SettingsScreen() {
 
   const SECTIONS: { title: string; items: Item[] }[] = [
     {
-      title: 'General',
+      title: t('settings.sections.general'),
       items: [
-        { id: 'account', label: 'Account', icon: 'person-circle-outline', colorKey: 'primary', tintKey: 'primary', value: profile?.name ?? 'Guest' },
-        { id: 'plan', label: 'Subscription', icon: 'diamond-outline', colorKey: 'primary', tintKey: 'primary', value: isPremium ? 'Premium' : 'Free' },
-        { id: 'language', label: 'Language', icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: languageLabel(profile?.preferences?.language) },
+        { id: 'account', label: t('settings.items.account'), icon: 'person-circle-outline', colorKey: 'primary', tintKey: 'primary', value: profile?.name ?? t('tabs.profile.guestFallback') },
+        { id: 'plan', label: t('settings.items.subscription'), icon: 'diamond-outline', colorKey: 'primary', tintKey: 'primary', value: isPremium ? t('settings.premiumValue') : t('settings.freeValue') },
+        { id: 'language', label: t('settings.items.language'), icon: 'language-outline', colorKey: 'green', tintKey: 'green', value: languageLabel(profile?.preferences?.language) },
       ],
     },
     {
-      title: 'Privacy & Data',
+      title: t('settings.sections.privacyData'),
       items: [
-        { id: 'security', label: 'Security', icon: 'lock-closed-outline', colorKey: 'blue', tintKey: 'blue' },
-        { id: 'privacy', label: 'Privacy', icon: 'shield-checkmark-outline', colorKey: 'secondary', tintKey: 'primary' },
-        { id: 'terms', label: 'Terms & Conditions', icon: 'document-text-outline', colorKey: 'orange', tintKey: 'orange' },
+        { id: 'security', label: t('settings.items.security'), icon: 'lock-closed-outline', colorKey: 'blue', tintKey: 'blue' },
+        { id: 'privacy', label: t('settings.items.privacy'), icon: 'shield-checkmark-outline', colorKey: 'secondary', tintKey: 'primary' },
+        { id: 'terms', label: t('settings.items.terms'), icon: 'document-text-outline', colorKey: 'orange', tintKey: 'orange' },
       ],
     },
     {
-      title: 'Support',
-      items: [{ id: 'about', label: 'About', icon: 'information-circle-outline', colorKey: 'muted', tintKey: 'neutral', value: 'v1.0.0' }],
+      title: t('settings.sections.support'),
+      items: [{ id: 'about', label: t('settings.items.about'), icon: 'information-circle-outline', colorKey: 'muted', tintKey: 'neutral', value: 'v1.0.0' }],
     },
   ];
 
@@ -78,7 +80,7 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
             <Ionicons name="chevron-back" size={22} color={Palette.ink} />
           </Pressable>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerTitle}>{t('settings.title')}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -107,7 +109,7 @@ export default function SettingsScreen() {
             </View>
           ))}
 
-          <Text style={styles.footer}>Smart Planner · v1.0.0</Text>
+          <Text style={styles.footer}>{t('tabs.profile.version')}</Text>
         </ScrollView>
       </SafeAreaView>
     </View>

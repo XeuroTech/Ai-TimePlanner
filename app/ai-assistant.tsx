@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -35,11 +36,15 @@ import { useAuthStore } from '@/store/auth-store';
 /* Constants + seed conversation                                              */
 /* -------------------------------------------------------------------------- */
 
-const SUGGESTIONS = ['Generate Timetable', 'Optimize Schedule', 'Study Tips'];
+type TFn = ReturnType<typeof useTranslation>['t'];
 
-/** Greeting shown on an empty thread. Not persisted — it's UI, not history. */
-const GREETING =
-  '👋 Hi! I can help you plan your day, break down tasks and build schedules. What would you like to do?';
+function getSuggestions(t: TFn): string[] {
+  return [
+    t('aiAssistant.suggestions.generateTimetable'),
+    t('aiAssistant.suggestions.optimizeSchedule'),
+    t('aiAssistant.suggestions.studyTips'),
+  ];
+}
 
 /**
  * How many stored messages to replay to the model. History is now permanent, so
@@ -47,39 +52,41 @@ const GREETING =
  */
 const MAX_CONTEXT_MESSAGES = 20;
 
-const STUDY_PLAN: ChatPlanItem[] = [
-  { day: 'Day 1', detail: 'Mathematics — 3 hours' },
-  { day: 'Day 2', detail: 'Physics — 3 hours' },
-  { day: 'Day 3', detail: 'Computer Science — 4 hours' },
-  { day: 'Day 4', detail: 'Mathematics — 2 hours' },
-  { day: 'Day 5', detail: 'Physics — 3 hours' },
-  { day: 'Day 6', detail: 'Computer Science — 3 hours' },
-  { day: 'Day 7', detail: 'Revision & Practice Tests' },
-];
+function getStudyPlan(t: TFn): ChatPlanItem[] {
+  return [
+    { day: t('aiAssistant.studyPlan.day', { n: 1 }), detail: t('aiAssistant.studyPlan.detail1') },
+    { day: t('aiAssistant.studyPlan.day', { n: 2 }), detail: t('aiAssistant.studyPlan.detail2') },
+    { day: t('aiAssistant.studyPlan.day', { n: 3 }), detail: t('aiAssistant.studyPlan.detail3') },
+    { day: t('aiAssistant.studyPlan.day', { n: 4 }), detail: t('aiAssistant.studyPlan.detail4') },
+    { day: t('aiAssistant.studyPlan.day', { n: 5 }), detail: t('aiAssistant.studyPlan.detail5') },
+    { day: t('aiAssistant.studyPlan.day', { n: 6 }), detail: t('aiAssistant.studyPlan.detail6') },
+    { day: t('aiAssistant.studyPlan.day', { n: 7 }), detail: t('aiAssistant.studyPlan.detail7') },
+  ];
+}
 
 /* -------------------------------------------------------------------------- */
 /* Offline fallback reply (used when no Groq key is configured)                */
 /* -------------------------------------------------------------------------- */
 
-function aiReply(prompt: string): { text: string; plan?: ChatPlanItem[] } {
+function aiReply(t: TFn, prompt: string): { text: string; plan?: ChatPlanItem[] } {
   const p = prompt.toLowerCase();
   if (p.includes('timetable')) {
-    return { text: "Done! I've generated a balanced weekly timetable and spread your sessions evenly across the week." };
+    return { text: t('aiAssistant.offlineReplies.timetable') };
   }
   if (p.includes('optimize')) {
-    return { text: "I've optimized your schedule — reduced back-to-back classes and added short breaks between study blocks." };
+    return { text: t('aiAssistant.offlineReplies.optimize') };
   }
   if (p.includes('tip')) {
-    return { text: 'Try the Pomodoro technique: 25 minutes focused study, 5 minutes rest. Review notes within 24 hours to boost retention.' };
+    return { text: t('aiAssistant.offlineReplies.tips') };
   }
   if (p.includes('plan') || p.includes('exam')) {
-    return { text: "Here's a fresh 7-day study plan tailored to your subjects:", plan: STUDY_PLAN };
+    return { text: t('aiAssistant.offlineReplies.plan'), plan: getStudyPlan(t) };
   }
-  return { text: "Got it! I'll help you with that. Could you share a little more detail so I can tailor the plan?" };
+  return { text: t('aiAssistant.offlineReplies.fallback') };
 }
 
 /** Short "when" label for a history row. */
-function formatWhen(iso: string): string {
+function formatWhen(t: TFn, iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const now = new Date();
@@ -88,7 +95,7 @@ function formatWhen(iso: string): string {
   }
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (d.toDateString() === yesterday.toDateString()) return t('aiAssistant.yesterday');
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
@@ -98,6 +105,7 @@ function formatWhen(iso: string): string {
 
 export default function AiAssistantScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { seed } = useLocalSearchParams<{ seed?: string }>();
   const insets = useSafeAreaInsets();
   const { Palette, Tint, isDark } = useAppTheme();
@@ -244,7 +252,7 @@ export default function AiAssistantScreen() {
 
     // No key configured → keep the offline canned reply so the UI still works.
     if (!isAiConfigured) {
-      const reply = aiReply(text);
+      const reply = aiReply(t, text);
       await appendMessage(conversationId, 'ai', reply.text, reply.plan);
       setTyping(false);
       return;
@@ -268,7 +276,7 @@ export default function AiAssistantScreen() {
         await appendMessage(
           conversationId,
           'ai',
-          "Sorry, I couldn't reach the assistant just now. Please check your connection and try again.",
+          t('aiAssistant.sendFailed'),
         );
       }
     } finally {
@@ -354,9 +362,9 @@ export default function AiAssistantScreen() {
   };
 
   const confirmDelete = (item: ConversationSummary) => {
-    Alert.alert('Delete chat', `Delete “${item.title}”? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void performDelete(item.id) },
+    Alert.alert(t('aiAssistant.deleteChatTitle'), t('aiAssistant.deleteChatMessage', { title: item.title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => void performDelete(item.id) },
     ]);
   };
 
@@ -382,6 +390,7 @@ export default function AiAssistantScreen() {
   const canSend = input.trim().length > 0 && !typing && !loading;
 
   const scrollToEnd = () => scrollRef.current?.scrollToEnd({ animated: true });
+  const SUGGESTIONS = useMemo(() => getSuggestions(t), [t]);
 
   return (
     <View style={styles.root}>
@@ -400,22 +409,22 @@ export default function AiAssistantScreen() {
               <Ionicons name="sparkles" size={16} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={styles.headerTitle}>AI Assistant</Text>
-              <Text style={styles.headerStatus}>Online</Text>
+              <Text style={styles.headerTitle}>{t('aiAssistant.title')}</Text>
+              <Text style={styles.headerStatus}>{t('aiAssistant.onlineStatus')}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
             <Pressable
               hitSlop={10}
               onPress={openHistory}
-              accessibilityLabel="Chat history"
+              accessibilityLabel={t('aiAssistant.chatHistoryA11y')}
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
               <Ionicons name="time-outline" size={20} color={Palette.primary} />
             </Pressable>
             <Pressable
               hitSlop={10}
               onPress={() => router.push('/ai-schedule')}
-              accessibilityLabel="AI generator"
+              accessibilityLabel={t('aiAssistant.aiGeneratorA11y')}
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}>
               <Ionicons name="create-outline" size={20} color={Palette.primary} />
             </Pressable>
@@ -436,7 +445,7 @@ export default function AiAssistantScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               onContentSizeChange={scrollToEnd}>
-              {messages.length === 0 ? <AiBubble text={GREETING} /> : null}
+              {messages.length === 0 ? <AiBubble text={t('aiAssistant.greeting')} /> : null}
 
               {messages.map((m) =>
                 m.role === 'user' ? (
@@ -483,7 +492,7 @@ export default function AiAssistantScreen() {
               <TextInput
                 value={input}
                 onChangeText={setInput}
-                placeholder="Type a message..."
+                placeholder={t('aiAssistant.inputPlaceholder')}
                 placeholderTextColor={Palette.subtle}
                 style={styles.textInput}
                 multiline
@@ -518,12 +527,12 @@ export default function AiAssistantScreen() {
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Chat history</Text>
+            <Text style={styles.sheetTitle}>{t('aiAssistant.chatHistoryTitle')}</Text>
             <Pressable
               onPress={() => void startNewChat()}
               style={({ pressed }) => [styles.newChatBtn, pressed && styles.pressed]}>
               <Ionicons name="add" size={16} color="#FFFFFF" />
-              <Text style={styles.newChatText}>New chat</Text>
+              <Text style={styles.newChatText}>{t('aiAssistant.newChat')}</Text>
             </Pressable>
           </View>
 
@@ -535,7 +544,7 @@ export default function AiAssistantScreen() {
             <View style={styles.sheetEmpty}>
               <Ionicons name="chatbubbles-outline" size={34} color={Palette.subtle} />
               <Text style={styles.sheetEmptyText}>
-                No saved chats yet. Your conversations appear here automatically.
+                {t('aiAssistant.noSavedChats')}
               </Text>
             </View>
           ) : (
@@ -551,24 +560,23 @@ export default function AiAssistantScreen() {
                         {item.title}
                       </Text>
                       <Text style={styles.historyPreview} numberOfLines={1}>
-                        {item.preview || 'No messages yet'}
+                        {item.preview || t('aiAssistant.noMessagesYet')}
                       </Text>
                       <Text style={styles.historyMeta}>
-                        {formatWhen(item.updatedAt)} · {item.messageCount}{' '}
-                        {item.messageCount === 1 ? 'message' : 'messages'}
+                        {formatWhen(t, item.updatedAt)} · {t('aiAssistant.messageCount', { count: item.messageCount })}
                       </Text>
                     </Pressable>
                     <Pressable
                       hitSlop={8}
                       onPress={() => setRenaming(item)}
-                      accessibilityLabel={`Rename ${item.title}`}
+                      accessibilityLabel={t('aiAssistant.renameA11y', { title: item.title })}
                       style={({ pressed }) => [styles.historyDelete, pressed && styles.pressed]}>
                       <Ionicons name="pencil-outline" size={17} color={Palette.subtle} />
                     </Pressable>
                     <Pressable
                       hitSlop={8}
                       onPress={() => confirmDelete(item)}
-                      accessibilityLabel={`Delete ${item.title}`}
+                      accessibilityLabel={t('aiAssistant.deleteA11y', { title: item.title })}
                       style={({ pressed }) => [styles.historyDelete, pressed && styles.pressed]}>
                       <Ionicons name="trash-outline" size={18} color={Palette.subtle} />
                     </Pressable>
@@ -623,6 +631,7 @@ function RenameSheet({
   onCancel: () => void;
   onConfirm: (title: string) => void;
 }) {
+  const { t } = useTranslation();
   const { Palette, Tint } = useAppTheme();
   const styles = useMemo(() => createStyles(Palette, Tint), [Palette, Tint]);
   const [text, setText] = useState(initial);
@@ -630,20 +639,20 @@ function RenameSheet({
   return (
     <Pressable style={styles.renameBackdrop} onPress={onCancel}>
       <Pressable style={styles.renameSheet} onPress={() => {}}>
-        <Text style={styles.renameTitle}>Rename chat</Text>
+        <Text style={styles.renameTitle}>{t('aiAssistant.renameChatTitle')}</Text>
         <TextInput
           value={text}
           onChangeText={setText}
           autoFocus
           selectTextOnFocus
-          placeholder="Chat name"
+          placeholder={t('aiAssistant.chatNamePlaceholder')}
           placeholderTextColor={Palette.subtle}
           style={styles.renameInput}
           onSubmitEditing={() => text.trim() && onConfirm(text)}
         />
         <View style={styles.renameActions}>
           <Pressable onPress={onCancel} style={({ pressed }) => [styles.renameGhostBtn, pressed && styles.pressed]}>
-            <Text style={styles.renameGhostText}>Cancel</Text>
+            <Text style={styles.renameGhostText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => text.trim() && onConfirm(text)}
@@ -653,7 +662,7 @@ function RenameSheet({
               !text.trim() && styles.renamePrimaryDisabled,
               pressed && !!text.trim() && styles.pressed,
             ]}>
-            <Text style={styles.renamePrimaryText}>Save</Text>
+            <Text style={styles.renamePrimaryText}>{t('common.save')}</Text>
           </Pressable>
         </View>
       </Pressable>
